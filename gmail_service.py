@@ -19,9 +19,12 @@ def get_service():
             creds.refresh(Request())
     # jos token.json-tiedostoa ei löydy, luodaan uusi credentials
         else:
-            flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
-            creds = flow.run_local_server(port=8080, open_browser=False)
-    # tallennetaan credentials token.json-tiedostoon
+            # Tämä on se automaattinen tapa, joka avaa selaimen itse
+            flow = InstalledAppFlow.from_client_secrets_file(
+                "credentials.json", SCOPES)
+            creds = flow.run_local_server(port=0)
+            
+        # Ja muista tallentaa se token heti sen jälkeen
         with open("token.json", "w") as token:
             token.write(creds.to_json())
     # palautetaan creds-muuttuja, joka sisältää Gmail API:n käyttöoikeudet
