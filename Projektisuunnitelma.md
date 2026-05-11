@@ -30,9 +30,11 @@ Tämä sovellus automatisoi valvontakameran lähettämien videoiden hallinnan. S
 
 ## ⚙️ 3. Työnkulku (Detailed Workflow)
 
-1.  **Haku:** Skripti etsii Gmailista viestit, joissa on kameran **tunniste** ja videoliite.
+1.  **Haku ja Työlista:**
+    Ohjelma hakee kaikki "kameratunnisteella" löytyvät viestit kerralla hyödyntäen sivutusta (nextPageToken).
+    Viestilista käännetään ympäri (reverse), jotta prosessi alkaa vanhimmista viesteistä.
 2.  **Lataus:** Video ladataan ja tallennetaan polkuun `D:\valvontakamera\temp\`.
-3.  **Vapautus:** Viesti poistetaan Gmailista heti onnistuneen latauksen jälkeen.
+3.  **Vapautus:**  Viesti siirretään Gmailin roskakoriin (Trash) heti onnistuneen latauksen jälkeen pilvitilan vapauttamiseksi.
 4.  **AI-Analyysi:** 
     *   Ladataan kaikki kasvot `./vertailukuvat/` -kansioista.
     *   Käydään läpi `temp`-kansion videot.
