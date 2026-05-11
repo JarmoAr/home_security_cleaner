@@ -32,26 +32,33 @@ def get_service():
     return build('gmail', 'v1', credentials=creds)   
 
 # Tämä funktio hakee Gmail-viestit, jotka sisältävät "Motion Detection for" otsikon, ja tulostaa niiden ID:n, aiheen, lähettäjän ja päivämäärän.
-def hae_kameran_viestit(service):
-        try:
-            # Hae viestit, jotka sisältävät "Motion Detection for" otsikon
-            results = service.users().messages().list(userId='me', q='subject:"Motion Detection for"').execute()
-            messages = results.get('messages', [])
+def hae_kaikki_kameran_viestit(service):
+    kaikki_viestit = []
+    seuraava_sivu = None
+    try:
+         # Hae viestit, jotka sisältävät "Motion Detection for" otsikon
+        while True:
 
-            if not messages:
-                print("Ei löytynyt viestejä.")
-                return
+            results = service.users().messages().list(
+                userId='me',
+                q='subject:"Motion Detection for"',
+                pageToken=seuraava_sivu).execute()
+            
+            # Lisää haetut viestit kaikki_viestit-listaan
+            kaikki_viestit.extend(results.get('messages', []))
+            
+            # Hae seuraavan sivun token, jos se on saatavilla
+            seuraava_sivu = results.get('nextPageToken')
 
-            print(f"Löytyi {len(messages)} viestit.")
-            for message in messages:
-                msg = service.users().messages().get(userId='me', id=message['id']).execute()
-                print(f"Viestin ID: {msg['id']}")
-                print(f"Viestin aihe: {msg['payload']['headers'][0]['value']}")
-                print(f"Viestin lähettäjä: {msg['payload']['headers'][1]['value']}")
-                print(f"Viestin päivämäärä: {msg['payload']['headers'][2]['value']}")
-                print("----")
-        except HttpError as error:
-            print(f"Tapahtui virhe: {error}")
+            if not seuraava_sivu:
+                break
+    
+        # Palautetaan kaikki haetut viestit
+        return kaikki_viestit
+
+    except HttpError as error:
+        print(f"Tapahtui virhe: {error}")
+        return []
 
 # Tämä on pääohjelma, joka suoritetaan, kun skripti ajetaan. Se kutsuu get_service-funktiota ja tarkistaa, onnistuiko yhteyden muodostaminen Gmail API:iin.
 if __name__ == "__main__":
@@ -61,5 +68,12 @@ if __name__ == "__main__":
     
     if yhteys:
         print("Onnistui! Yhteys muodostettu.")
+        
         # Kutsutaan funktiota, joka hakee kameran viestit
-        hae_kameran_viestit(yhteys)
+        viestilista = hae_kaikki_kameran_viestit(yhteys)
+
+        # käännetään viestilista vanhimmasta uusimpaan
+        viestilista.reverse()
+        print(f"VALMIS! Löytyi yhteensä {len(viestilista)} viestiä.")
+        if viestilista:
+            print(f"Vanhin viestin ID : {viestilista[0]['id']}")
