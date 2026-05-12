@@ -25,6 +25,7 @@ Tämä sovellus automatisoi valvontakameran lähettämien videoiden hallinnan. S
 1.  `main.py`: Ohjaa koko prosessia ja hallitsee tiedostojen siirtoja.
 2.  `gmail_service.py`: Hoitaa sähköpostien haun (tunnisteella), latauksen ja poiston.
 3.  `vision_service.py`: Suorittaa kasvojentunnistuksen ja palauttaa analyysin tuloksen.
+4.  `name_service.py`: Hoitaa nimen koostamista tallennettavalle tiedostolle.
 
 ---
 
