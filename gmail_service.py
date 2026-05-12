@@ -60,17 +60,18 @@ def hae_kaikki_kameran_viestit(service):
         print(f"Tapahtui virhe: {error}")
         return []
 
-#def seuraava_viesti_id(kaikki_viestit):
-#    try:
-#        # tarlostetaam onko viestilista tyhjä, jos on, palautetaan None
-#        if not kaikki_viestit:
-#            return None
-#        # Haetaan ensimmäisen mailin id
-#        nykyinen_id = kaikki_viestit[0]['id']
-#
-#    except HttpError as error:
-#        print(f"Tapahtui virhe: {error}")
-#        return None
+def seuraava_viesti_id(kaikki_viestit):
+    try:
+        # tarlostetaam onko viestilista tyhjä, jos on, palautetaan None
+        if not kaikki_viestit:
+            return None
+        # Haetaan ensimmäisen mailin id
+        haettava_maili_id = kaikki_viestit[0]['id']
+
+        return haettava_maili_id
+    except Exception as e:
+        return None
+
 
 # Tämä on pääohjelma, joka suoritetaan, kun skripti ajetaan. Se kutsuu get_service-funktiota ja tarkistaa, onnistuiko yhteyden muodostaminen Gmail API:iin.
 if __name__ == "__main__":
