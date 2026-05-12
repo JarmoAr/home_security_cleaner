@@ -5,7 +5,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
+SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
 
 # Tämä funktio hakee Gmail API:n käyttöoikeudet ja palauttaa palveluobjektin, jota voidaan käyttää API-kutsuihin
 def get_service():
