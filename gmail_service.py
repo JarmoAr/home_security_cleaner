@@ -105,6 +105,14 @@ def haetaan_video(service, maili_id, video_id):
         print(f"Virhe videon tallennuksessa: {e}")
         return None
 
+def hae_aikaleima(maili):
+    try:
+        aikaleima = maili['internalDate']
+        return aikaleima
+    except Exception as e:
+        return None
+
+
 # Tämä on pääohjelma, joka suoritetaan, kun skripti ajetaan. Se kutsuu get_service-funktiota ja tarkistaa, onnistuiko yhteyden muodostaminen Gmail API:iin.
 if __name__ == "__main__":
     # Kutsutaan tekemääsi funktiota
@@ -120,17 +128,19 @@ if __name__ == "__main__":
         print(f"VALMIS! Löytyi yhteensä {len(viestilista)} viestiä.")
         if viestilista:
             print(f"Vanhin viestin ID : {viestilista[0]['id']}")
+            # Haetaan seuraavan viestin ID funktiolla "seuraava_viesti_id" ja tulostetaan se
             seuraava_viesti_id = seuraava_viesti_id(viestilista)
             print(f"Seuraava haettava viestin ID: {seuraava_viesti_id}")
+            # Haetaan seuraava maili funktiolla "haetaan_seuraava_maili" ja tulostetaan sen ID
             haettava_maili = haetaan_seuraava_maili(yhteys, seuraava_viesti_id)
             if haettava_maili:
                 print(f"Haettu maili ID: {haettava_maili['id']}")
             else:
                 print("Seuraavaa mailia ei löytynyt.")
+            
             print(haettava_maili.keys())
             print("**********************************************")
             print(haettava_maili['payload'].keys())
-            print("**********************************************")
             print("**********************************************")
             for part in haettava_maili['payload']['parts']:
                 print(part['filename'])
@@ -148,3 +158,6 @@ if __name__ == "__main__":
                         print("Video data haettu onnistuneesti.")
                     else:
                         print("Videon hakeminen epäonnistui.")
+                    hae_aikaleima = hae_aikaleima(haettava_maili)
+                    if hae_aikaleima:
+                        print(f"Mailin aikaleima: {hae_aikaleima}")
