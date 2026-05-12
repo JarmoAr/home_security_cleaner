@@ -38,7 +38,6 @@ def hae_kaikki_kameran_viestit(service):
     try:
          # Hae viestit, jotka sisältävät "Motion Detection for" otsikon
         while True:
-
             results = service.users().messages().list(
                 userId='me',
                 q='subject:"Motion Detection for"',
@@ -68,9 +67,42 @@ def seuraava_viesti_id(kaikki_viestit):
             return None
         # Haetaan ensimmäisen mailin id
         haettava_maili_id = kaikki_viestit[0]['id']
-
         return haettava_maili_id
+
     except Exception as e:
+        return None
+
+def haetaan_seuraava_maili(service, maili_id):
+    try:
+        maili = service.users().messages().get(userId='me', id=maili_id).execute()
+        return maili
+    except Exception as e:
+        return None
+
+def haetaan_videon_id(maili):
+    try:
+        video_id = None
+        for part in maili['payload']['parts']:
+            # jos tiedostonimi päättyy .mp4, katsotaan sen bodyn dataa ja tulostetaan se
+            if part['filename'].endswith('.mp4'):
+                video_id = part['body']['attachmentId']
+        return video_id
+
+    except Exception as e:
+        return None
+        
+def haetaan_video(service, maili_id, video_id):
+    try:
+        # Hae video dataa Gmail API:lla
+        video_data = service.users().messages().attachments().get(
+            userId='me',
+            messageId=maili_id,
+            id=video_id
+        ).execute()
+        return video_data
+
+    except Exception as e:
+        print(f"Virhe videon tallennuksessa: {e}")
         return None
 
 # Tämä on pääohjelma, joka suoritetaan, kun skripti ajetaan. Se kutsuu get_service-funktiota ja tarkistaa, onnistuiko yhteyden muodostaminen Gmail API:iin.
@@ -90,3 +122,29 @@ if __name__ == "__main__":
             print(f"Vanhin viestin ID : {viestilista[0]['id']}")
             seuraava_viesti_id = seuraava_viesti_id(viestilista)
             print(f"Seuraava haettava viestin ID: {seuraava_viesti_id}")
+            haettava_maili = haetaan_seuraava_maili(yhteys, seuraava_viesti_id)
+            if haettava_maili:
+                print(f"Haettu maili ID: {haettava_maili['id']}")
+            else:
+                print("Seuraavaa mailia ei löytynyt.")
+            print(haettava_maili.keys())
+            print("**********************************************")
+            print(haettava_maili['payload'].keys())
+            print("**********************************************")
+            print("**********************************************")
+            for part in haettava_maili['payload']['parts']:
+                print(part['filename'])
+                print(part['mimeType'])
+                print("**********************************************")
+            
+            # jos tiedostonimi päättyy .mp4, katsotaan sen bodyn dataa ja tulostetaan se
+                if part['filename'].endswith('.mp4'):
+                    video_id = part['body']['attachmentId']
+                    print(f"Video attachment ID: {video_id}")
+            
+            # Hae video dataa Gmail API:lla
+                    video_data = haetaan_video(yhteys, haettava_maili['id'], video_id)
+                    if video_data:
+                        print("Video data haettu onnistuneesti.")
+                    else:
+                        print("Videon hakeminen epäonnistui.")
