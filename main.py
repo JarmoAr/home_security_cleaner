@@ -1,4 +1,5 @@
 import os
+import json
 import gmail_service # Olettaen että get_service on täällä
 
 # Paths
