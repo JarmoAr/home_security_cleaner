@@ -52,7 +52,8 @@ def hae_kaikki_kameran_viestit(service):
 
             if not seuraava_sivu:
                 break
-    
+        # käännetään viestilista vanhimmasta uusimpaan
+        kaikki_viestit.reverse()
         # Palautetaan kaikki haetut viestit
         return kaikki_viestit
 
@@ -72,7 +73,6 @@ def seuraava_viesti_id(kaikki_viestit):
     except Exception as e:
         return None
 
-
 # Tämä on pääohjelma, joka suoritetaan, kun skripti ajetaan. Se kutsuu get_service-funktiota ja tarkistaa, onnistuiko yhteyden muodostaminen Gmail API:iin.
 if __name__ == "__main__":
     # Kutsutaan tekemääsi funktiota
@@ -85,8 +85,8 @@ if __name__ == "__main__":
         # Kutsutaan funktiota, joka hakee kameran viestit
         viestilista = hae_kaikki_kameran_viestit(yhteys)
 
-        # käännetään viestilista vanhimmasta uusimpaan
-        viestilista.reverse()
         print(f"VALMIS! Löytyi yhteensä {len(viestilista)} viestiä.")
         if viestilista:
             print(f"Vanhin viestin ID : {viestilista[0]['id']}")
+            seuraava_viesti_id = seuraava_viesti_id(viestilista)
+            print(f"Seuraava haettava viestin ID: {seuraava_viesti_id}")
