@@ -1,5 +1,6 @@
 import os
 import base64
+import log_service
 
 # Videon dekoodaus
 def decode_video(video_data):
@@ -7,6 +8,7 @@ def decode_video(video_data):
         decoded_video = base64.urlsafe_b64decode(video_data['data'])
         return decoded_video
     except Exception as e:
+        log_service.virhe_logi(f"Virhe videon dekoodauksessa: {e}", "error_log.txt")
         return None
 
 # tarkistetaan löytyykö saman nimienen tiedosto
@@ -29,6 +31,7 @@ def tarkista_nimi(tiedostonnimi, temp_path, arkisto_path):
         return lopullinen_nimi
 
     except Exception as e:
+        log_service.virhe_logi(f"Virhe tiedoston nimen tarkistuksessa: {e}", "error_log.txt")
         return None
 
 # Tallenna video temp-kansioon

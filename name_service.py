@@ -1,4 +1,5 @@
 from datetime import datetime
+import log_service
 
 def aikaleiman_muutos(aikaleima):
     try:
@@ -7,9 +8,8 @@ def aikaleiman_muutos(aikaleima):
        return uusi_aikaleima
     
     except Exception as e:
-       return None
-
-
+        log_service.virhe_logi(f"Virhe aikaleiman muunnossa: {e}", "error_log.txt")
+        return None
 
 #testi osio
 if __name__ == "__main__":
