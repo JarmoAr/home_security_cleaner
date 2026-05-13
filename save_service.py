@@ -19,7 +19,7 @@ def tarkista_nimi(tiedostonnimi, temp_path, arkisto_path):
 
         while True:
             if os.path.exists(polku_temp) or os.path.exists(polku_arkisto):
-                lopullinen_nimi = tiedostonnimi + str(niminumero) + ".mp4"
+                lopullinen_nimi = tiedostonnimi + "(" + str(niminumero) + ").mp4"
                 niminumero += 1
                 polku_temp = os.path.join(temp_path, lopullinen_nimi)
                 polku_arkisto = os.path.join(arkisto_path, lopullinen_nimi)
@@ -27,10 +27,37 @@ def tarkista_nimi(tiedostonnimi, temp_path, arkisto_path):
                 break
         
         return lopullinen_nimi
-        
+
     except Exception as e:
         return None
 
 # Tallenna video temp-kansioon
 def tallenna_video(decoded_video, tiedostonnimi, temp_path, arkisto_path):
-     tarkista_nimi(tiedostonnimi, temp_path, arkisto_path)
+    try:
+        lopullinen_nimi = tarkista_nimi(tiedostonnimi, temp_path, arkisto_path)
+        polku_temp = os.path.join(temp_path, lopullinen_nimi)
+        with open(polku_temp, "wb") as f:
+            f.write(decoded_video)
+        return polku_temp
+    
+    except Exception as e:
+        return None
+
+# testi osio
+if __name__ == "__main__":
+    # 1. Luodaan testidataa (feikkibitit)
+    testi_bitit = b"Videodataa 123"
+    testi_nimi = "20260428_101425"  # Pelkkä aikaleima ilman päätettä
+    
+    # 2. Määritellään testipolut (voit käyttää r-kirjainta polun edessä)
+    t_path = r"d:\valvontakamera\temp"
+    a_path = r"d:\valvontakamera\arkisto"
+    
+    print("Testataan videon tallennusta...")
+    # 3. Kutsutaan funktiota
+    tulos_polku = tallenna_video(testi_bitit, testi_nimi, t_path, a_path)
+    
+    if tulos_polku:
+        print(f"Onnistui! Tiedosto tallennettu polkuun: {tulos_polku}")
+    else:
+        print("Tallennus epäonnistui.")
