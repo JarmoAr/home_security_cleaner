@@ -4,32 +4,37 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+import log_service
 
 SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
 
 # Tämä funktio hakee Gmail API:n käyttöoikeudet ja palauttaa palveluobjektin, jota voidaan käyttää API-kutsuihin
 def get_service():
-    # alustetaan creds-muuttuja
-    creds = None
-    # jos token.json-tiedosto löytyy, ladataan siitä credentials
-    if  os.path.exists("token.json"):
-        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
-    # jos credentials ei ole voimassa, päivitetään se tai luodaan uusi
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-    # jos token.json-tiedostoa ei löydy, luodaan uusi credentials
-        else:
-            # Tämä on se automaattinen tapa, joka avaa selaimen itse
-            flow = InstalledAppFlow.from_client_secrets_file(
-                "credentials.json", SCOPES)
-            creds = flow.run_local_server(port=0)
-            
-        # Ja muista tallentaa se token heti sen jälkeen
-        with open("token.json", "w") as token:
-            token.write(creds.to_json())
-    # palautetaan creds-muuttuja, joka sisältää Gmail API:n käyttöoikeudet
-    return build('gmail', 'v1', credentials=creds)   
+    try:
+        # alustetaan creds-muuttuja
+        creds = None
+        # jos token.json-tiedosto löytyy, ladataan siitä credentials
+        if  os.path.exists("token.json"):
+            creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+        # jos credentials ei ole voimassa, päivitetään se tai luodaan uusi
+        if not creds or not creds.valid:
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+        # jos token.json-tiedostoa ei löydy, luodaan uusi credentials
+            else:
+                # Tämä on se automaattinen tapa, joka avaa selaimen itse
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    "credentials.json", SCOPES)
+                creds = flow.run_local_server(port=0)
+                
+            # Ja muista tallentaa se token heti sen jälkeen
+            with open("token.json", "w") as token:
+                token.write(creds.to_json())
+        # palautetaan creds-muuttuja, joka sisältää Gmail API:n käyttöoikeudet
+        return build('gmail', 'v1', credentials=creds)   
+    except Exception as e:
+        log_service.virhe_logi(f"Yhteyden muodostaminen epäonnistui: {e}", "error_log.txt")
+        return None
 
 # Tämä funktio hakee Gmail-viestit, jotka sisältävät "Motion Detection for" otsikon, ja tulostaa niiden ID:n, aiheen, lähettäjän ja päivämäärän.
 def hae_kaikki_kameran_viestit(service):
@@ -57,8 +62,8 @@ def hae_kaikki_kameran_viestit(service):
         return kaikki_viestit
 
     except HttpError as error:
-        print(f"Tapahtui virhe: {error}")
-        return []
+        log_service.virhe_logi(f"HTTP-virhe tapahtui: {error}", "error_log.txt")
+        return None
 
 def seuraava_viesti_id(kaikki_viestit):
     try:
@@ -70,6 +75,7 @@ def seuraava_viesti_id(kaikki_viestit):
         return haettava_maili_id
 
     except Exception as e:
+        log_service.virhe_logi(f"Virhe seuraavan viestin ID:n hakemisessa: {e}", "error_log.txt")
         return None
 
 def haetaan_seuraava_maili(service, maili_id):
@@ -77,6 +83,7 @@ def haetaan_seuraava_maili(service, maili_id):
         maili = service.users().messages().get(userId='me', id=maili_id).execute()
         return maili
     except Exception as e:
+        log_service.virhe_logi(f"Virhe seuraavan mailin hakemisessa: {e}", "error_log.txt")
         return None
 
 def haetaan_videon_id(maili):
@@ -89,6 +96,7 @@ def haetaan_videon_id(maili):
         return video_id
 
     except Exception as e:
+        log_service.virhe_logi(f"Virhe videon ID:n hakemisessa: {e}", "error_log.txt")
         return None
         
 def haetaan_video(service, maili_id, video_id):
@@ -102,14 +110,16 @@ def haetaan_video(service, maili_id, video_id):
         return video_data
 
     except Exception as e:
-        print(f"Virhe videon tallennuksessa: {e}")
+        log_service.virhe_logi(f"Virhe videon hakemisessa: {e}", "error_log.txt")
         return None
 
 def hae_aikaleima(maili):
     try:
         aikaleima = maili['internalDate']
         return aikaleima
+        
     except Exception as e:
+        log_service.virhe_logi(f"Virhe aikaleiman hakemisessa: {e}", "error_log.txt")
         return None
 
 
