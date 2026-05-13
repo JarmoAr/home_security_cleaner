@@ -27,6 +27,8 @@ Tämä sovellus automatisoi valvontakameran lähettämien videoiden hallinnan. S
 3.  `vision_service.py`: Suorittaa kasvojentunnistuksen ja palauttaa analyysin tuloksen.
 4.  `name_service.py`: Hoitaa nimen koostamista tallennettavalle tiedostolle.
 5.  `save_service.py`: Hoitaa videon dekoodaamisen ja tallennuksen.
+6.  `log_service.py`: Hoitaa tarvittavan logituksen.
+
 
 ---
 

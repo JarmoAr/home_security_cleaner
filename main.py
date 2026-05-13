@@ -47,6 +47,3 @@ tallenna_polku = save_service.tallenna_video(decoded_video, uusi_aikaleima, temp
 
 
 # testing
-print("Temp kansio olemassa:", os.path.exists(temp_path))
-print("Arkisto kansio olemassa:", os.path.exists(arkisto_path))
-print("Image kansio olemassa:", os.path.exists(image_path))
