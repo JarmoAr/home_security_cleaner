@@ -67,7 +67,7 @@ def hae_kaikki_kameran_viestit(service):
 
 def seuraava_viesti_id(kaikki_viestit):
     try:
-        # tarlostetaam onko viestilista tyhjä, jos on, palautetaan None
+        # tarkastetaan onko viestilista tyhjä, jos on, palautetaan None
         if not kaikki_viestit:
             return None
         # Haetaan ensimmäisen mailin id
@@ -117,7 +117,7 @@ def hae_aikaleima(maili):
     try:
         aikaleima = maili['internalDate']
         return aikaleima
-        
+
     except Exception as e:
         log_service.virhe_logi(f"Virhe aikaleiman hakemisessa: {e}", "error_log.txt")
         return None
