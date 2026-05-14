@@ -1,5 +1,7 @@
 import cv2
 import log_service
+import face_recognition
+from ultralytics import YOLO
 
 def ota_kuvakaappaukset(video):
     try:
@@ -32,7 +34,24 @@ def ota_kuvakaappaukset(video):
         log_service.virhe_logi(f"Virhe kuvakaappausten ottamisessa: {e}", "error_log.txt")
         return []        
 
+def tunnista_kohteet(kuvakaappaukset):
+    try:
+        malli = YOLO("yolov8n.pt")
+        kohteen_nimi = [] 
+
+        for kuva in kuvakaappaukset:
+            tulokset = malli.predict(source=kuva)
+            for box in tulokset[0].boxes:
+                luokka_id = int(box.cls[0])
+                nimi = malli.names[luokka_id]
+                if nimi not in kohteen_nimi:
+                    kohteen_nimi.append(nimi)
         
+        return kohteen_nimi
+
+    except Exception as e:
+        log_service.virhe_logi(f"Virhe kohteiden tunnistamisessa: {e}", "error_log.txt")
+        return []
 
 
         
