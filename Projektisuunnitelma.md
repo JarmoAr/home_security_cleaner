@@ -55,4 +55,11 @@ Tämä sovellus automatisoi valvontakameran lähettämien videoiden hallinnan. S
 *   **Tunniste:** Käytetään kameran viestien yksilöllistä tunnistetta haun rajaamiseen.
 
 ---
-*Dokumentti päivitetty: 24.5.2024 - D-asema ja laajennettu kuvakirjasto lisätty.*
+
+## Testaus ja laadunvarmistus
+1. Tehdään yksikkötestaus (Unit Testing)
+2. estit ajetaan automaattisena regressiontestauksena (CI) aina, kun koodia pusketaan Gittiin.
+3. Testityökaluna Robot Framework ja Github Actions
+
+---
+*Dokumentti päivitetty: 18.5.2024 - Testau ja laadunvarmistus lisätty.*
