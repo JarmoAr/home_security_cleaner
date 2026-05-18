@@ -39,6 +39,31 @@ Testaa Videon nimen tarkistus
     # Varmistetaan, että testissä luotu temp kansio on poistettu.
     Directory Should Not Exist    ${temp_path}    
 
-
-
-     
+Testaa tallenna video
+    # def tallenna_video(decoded_video, tiedostonnimi, temp_path, arkisto_path):
+    # tedään oletuspolut, johon videotiedostot tallennetaan.
+    ${temp_path}    Set Variable    ${CURDIR}/test_temp
+    ${arkisto_path}    Set Variable     ${CURDIR}/arkisto_temp
+    # luodaan temp_path ja arkisto_path-kansio, jos se ei vielä ole olemassa.
+    Create Directory    ${temp_path}
+    Create Directory    ${arkisto_path}
+    # tehdään tiedostomuuttuja tallentamista varten
+    ${nimi}    Set Variable    video
+    # tehdään data joka tallennetaaan,
+    ${data}    Set Variable    testidataa§    
+    # kutsutaan tallenna_video-funktio, joka tallentaa datan temp_path-kansioon
+    ${tulos}    Tallenna Video    ${data}    ${nimi}    ${temp_path}    ${arkisto_path}
+    # Varmistetaan, että tallennettu tiedosto on olemassa temp_path-kansiossa.
+    File Should Exist    ${temp_path}/video.mp4
+    # Siivotaan testissä luotu tiedosto.
+    Remove File    ${temp_path}/video.mp4
+    # Varmistetaan, että testissä luotu tiedosto on poistettu.
+    File Should Not Exist    ${temp_path}/video.mp4
+    # siivotaan testissä luotu arkisto kansio.
+    Remove Directory    ${arkisto_path}
+    # Varmistetaan, että testissä luotu arkisto kansio on poistettu.
+    Directory Should Not Exist    ${arkisto_path}    
+    # Siivotaan testissä luotu temp kansio.
+    Remove Directory    ${temp_path}    
+    # Varmistetaan, että testissä luotu temp kansio on poistettu.
+    Directory Should Not Exist    ${temp_path}    
