@@ -1,0 +1,24 @@
+# tämä on testiajo automaatio, joka nimi on testiajo
+name: testiajo
+# tämä kertoo että tämä automaatio ajetaan aina kun koodia pusketaan
+on: [push]
+# tämä määrittelee mitä tapahtuu kun automaatio ajetaan
+jobs:
+  # työvaiheen nimi on aja-testit
+  aja-testit:
+    # tämä kertoo että työvaihe ajetaan ubuntu-latest käyttöjärjestelmässä
+    runs-on: ubuntu-latest
+    # tämä määrittelee mitä vaiheita työvaiheessa suoritetaan
+    steps:
+      # tämä vaihe hakee koodin GitHub-repositorysta
+      - uses: actions/checkout@v4
+      # tämä vaihe asentaa Pythonin
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      # asennetaan robot framework
+      - name: Asenna Robot Framework
+        run: pip install robotframework 
+      # tämä vaihe ajaa testit robot frameworkillä
+      - name: Aja testit
+        run: robot tests/
