@@ -12,6 +12,16 @@ Testaa Videon Decoodaus
     # Varmistetaan, että dekoodattu tulos on "Koevideo".
     Should Be Equal As Strings    ${tulos}    Koevideo
 
+Testaa Videon Decoodaus tyhjä data
+    # Tässä testissä luodaan feikkidata, joka on tyhjä data.
+    # Sitten käytetään Decode Video -funktiota dekoodaamaan se
+    # ja tarkistetaan, että saatu tulos on odotettu None kun virhee käskittely laukeaa.
+    &{feikkidata}    Create Dictionary
+    # Tämä on base64-koodattua dataa, joka vastaa "Koevideo" tekstiä.
+    ${tulos}    Decode Video    ${feikkidata}
+    # Varmistetaan, että dekoodattu tulos on "Koevideo".
+    Should Be Equal As Strings    ${tulos}    None
+
 Testaa Videon nimen tarkistus
     # Tässä testissä tarkistetaan videon nimen tarkistusfunktio.
     # Testataan, että funktio lisää sulkunumeron jos nimi on jo olemassa.
@@ -38,6 +48,7 @@ Testaa Videon nimen tarkistus
     Remove Directory    ${temp_path}    
     # Varmistetaan, että testissä luotu temp kansio on poistettu.
     Directory Should Not Exist    ${temp_path}    
+
 
 Testaa tallenna video
     # def tallenna_video(decoded_video, tiedostonnimi, temp_path, arkisto_path):

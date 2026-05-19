@@ -58,8 +58,11 @@ Tämä sovellus automatisoi valvontakameran lähettämien videoiden hallinnan. S
 
 ## Testaus ja laadunvarmistus
 1. Tehdään yksikkötestaus (Unit Testing)
-2. estit ajetaan automaattisena regressiontestauksena (CI) aina, kun koodia pusketaan Gittiin.
+2. Testit ajetaan automaattisena regressiontestauksena (CI) aina, kun koodia pusketaan Gittiin.
 3. Testityökaluna Robot Framework ja Github Actions
+
+## Testaus moduulit
+1. `save_service_tests.robot`: Hoitaa videon dekoodaamisen ja tallennuksen.
 
 ---
 *Dokumentti päivitetty: 18.5.2024 - Testau ja laadunvarmistus lisätty.*
