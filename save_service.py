@@ -34,7 +34,7 @@ def tarkista_nimi(tiedostonnimi, temp_path, arkisto_path):
         log_service.virhe_logi(f"Virhe tiedoston nimen tarkistuksessa: {e}", "error_log.txt")
         return None
 
-# Tallenna video temp-kansioon
+# Tallenna video temp-kansioon , nimen tarkistamiseen tarvitaan temp ja arkisto kansioiden polut
 def tallenna_video(decoded_video, tiedostonnimi, temp_path, arkisto_path):
     try:
         lopullinen_nimi = tarkista_nimi(tiedostonnimi, temp_path, arkisto_path)
