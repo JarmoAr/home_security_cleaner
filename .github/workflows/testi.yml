@@ -19,6 +19,15 @@ jobs:
       # asennetaan robot framework
       - name: Asenna Robot Framework
         run: pip install robotframework 
+      # asennetaan Gmail API client library
+      - name: Asenna Gmail API client library
+        run: pip install google-api-python-client
+      # asennetaan Google Auth-httplib2 library
+      - name: Asenna Google Auth-httplib2 library
+        run: pip install google-auth-httplib2
+      # asennetaan Google Auth-oauthlib
+      - name: Asenna Google Auth-oauthlib
+        run: pip install google-auth-oauthlib
       # tämä vaihe ajaa testit robot frameworkillä
       - name: Aja testit
         run: robot tests/
