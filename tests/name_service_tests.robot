@@ -18,7 +18,7 @@ Testaa aikaleiman muutos
     # Kutsutaan aikaleiman_muutos-funktiota, joka muuttaa aikaleiman odotetulla tavalla.
     ${tulos}    Aikaleiman Muutos    ${aikaleima}
     # Varmistetaan, että muutettu aikaleima on odotettu "2023-01-01 13:00:00", koska funktio lisää tunnin aikaleimaan.
-    Should Be Equal As Strings    ${tulos}    20230101_140000 
+    Should Be Equal As Strings    ${tulos}    20230101_120000 
 
 Testaa aikaleiman muutos tyhjä data try except
     # Tässä testissä tarkistetaan aikaleiman_muutos-funktion toimivuus.

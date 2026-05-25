@@ -1,5 +1,6 @@
 from datetime import datetime
 import log_service
+from zoneinfo import ZoneInfo
 
 def aikaleiman_muutos(aikaleima):
     try:
