@@ -1,4 +1,4 @@
-# tämä on testiajo automaatio, joka nimi on testiajo
+# tämä on testiajo automaatio, joka nimi on testiajo 
 name: testiajo
 # tämä kertoo että tämä automaatio ajetaan aina kun koodia pusketaan
 on: [push]
