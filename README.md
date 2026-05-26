@@ -27,3 +27,36 @@ Projektia käytetään samalla oppimisprojektina seuraaviin aiheisiin:
 * Robot Framework -testiautomaatio
 * GitHub Actions CI -workflowt
 * Modernit QA- ja automaatiokäytännöt
+
+
+---
+
+## Workflow
+
+```mermaid
+flowchart TD
+    A[Security Camera] --> B[Gmail Inbox]
+    B --> C[Python Application]
+    C --> D[Analyze Email and Video Attachments]
+    D --> E[Archive Files]
+    D --> F[Delete Unnecessary Files]
+    D --> G[Flag for Manual Review]
+
+    H[GitHub Actions] --> I[Robot Framework Tests]
+    I --> C
+```
+## Planned features
+
+* Implement retention-based quarantine folder for deleted videos
+* Add configurable retention period (e.g. 7–30 days)
+* Improve email filtering rules
+* Expand logging and monitoring
+
+---
+
+## Retention / deletion model (future improvement)
+
+* Safe video → Archive
+* Uncertain video → Review folder
+* Unwanted video → Quarantine (retained X days)
+* Final cleanup job removes expired quarantine files
