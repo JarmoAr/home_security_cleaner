@@ -94,6 +94,24 @@ Testataan haetaan seuraava maili Try Except Service
     ${tulos}    Haetaan Seuraava Maili     ${kaikki_viestit}  ${maili_id}
     Should Be Equal    ${tulos}    ${None}
 
+Testataan haetaan video
+    # Tässä testissä tarkistetaan def haetaan_video(service, maili_id, video_id):-funktion toimivuus.
+    # Testataan, että funktio hakee videon odotetulla tavalla.
+    # Luodaan maili
+    ${feikkivideo}    Create Dictionary    data=VideoBittia
+    ${feikki_service}    Luo Feikki Service    ${feikkivideo}
+    # Kutsutaan haetaan_video-funktiota, joka hakee videon odotetulla tavalla.
+    ${tulos}    Haetaan Video     ${feikki_service}  12345  123456
+    # Varmistetaan, että haettu video on odotettu video, koska funktio hakee videon mailista.
+    Should Be Equal    ${tulos}    ${feikkivideo}
+
+Testataan haetaan video Try Except
+    # Tässä testissä tarkistetaan def haetaan_video(service, maili_id, video_id):-funktion Try Except -toimivuus.
+    # Testataan, että funktio palauttaa None virheen sattuessa.
+    ${tulos}    Haetaan Video     ${None}  12345  123456
+    # Varmistetaan, että haettu video on odotettu video, koska funktio hakee videon mailista.
+    Should Be Equal    ${tulos}    ${None}
+
 *** Keywords ***
 Luo kansiot
     Create Directory    ${temp_path}
