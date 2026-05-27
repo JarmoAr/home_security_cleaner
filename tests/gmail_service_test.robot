@@ -1,6 +1,7 @@
 *** Settings ***
 Library    ../gmail_service.py
 Library    OperatingSystem
+Library    ../testiapuri.py
 Test Setup    Testin aloitus
 Test Teardown    Testin lopetus
 
@@ -71,6 +72,26 @@ Testaa hae aikaleima Try Except
     ${maili}    Create Dictionary    jotain  ${jotain}
 
     ${tulos}    Hae Aikaleima     ${maili}
+    Should Be Equal    ${tulos}    ${None}
+
+Testataan haetaan seuraava maili
+    # Tässä testissä tarkistetaan def haetaan_seuraava_maili(service, maili_id)-funktion toimivuus.
+    # Testataan, että funktio hakee seuraavan mailin odotetulla tavalla.
+    # Luodaan kaikki_viestit-lista,  joka sisältää viestit, jossa o viesti ja sillä id on "12345".
+    ${maili}    Luo Feikkimaili
+    ${feikki_service}    Luo Feikki Service    ${maili}
+    # Kutsutaan haetaan_seuraava_maili-funktiota, joka hakee seuraavan mailin odotetulla tavalla.
+    ${tulos}    Haetaan Seuraava Maili     ${feikki_service}  12345
+    # Varmistetaan, että haettu maili on odotettu maili, koska funktio hakee ensimmäisen mailin listasta.
+    Should Be Equal    ${tulos}    ${maili}
+
+Testataan haetaan seuraava maili Try Except Service
+    # Tässä testissä tarkistetaan def haetaan_seuraava_maili(service, maili_id)-funktion toimivuus try except tilanteessa
+    # Testataan, että funktio palauttaa None virheen sattuessa.
+    ${maili}    Luo Feikkimaili
+    ${maili_id}    Create Dictionary    id  12345
+    @{kaikki_viestit}    Create List    ${maili}
+    ${tulos}    Haetaan Seuraava Maili     ${kaikki_viestit}  ${maili_id}
     Should Be Equal    ${tulos}    ${None}
 
 *** Keywords ***

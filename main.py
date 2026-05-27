@@ -1,6 +1,6 @@
 import os
 import json
-import gmail_service # Olettaen että get_service on täällä
+import gmail_service 
 import save_service
 import name_service
 
