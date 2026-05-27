@@ -39,17 +39,7 @@ Testaa haetaan videon id
     # Tässä testissä tarkistetaan haetaan_videon_id(maili)-funktion toimivuus.
     # Testataan, että funktio hakee seuraavan videon id:n odotetulla tavalla.
     # Luodaan maili 
-    # mailin alin kerros on body, joka sisältää attachmentId:n "123456".
-    # mailin toiseksi alin kerros on partti, joka sisältää filename:n "video.mp4" ja body:n, joka on mailin alin kerros.
-    # mailin keskikerros on parts_list, joka on lista, joka sisältää partti-dictionaryn.
-    # mailin toiseksi ylin kerros on payload, joka sisältää parts_listin. 
-    # mailin ylin kerros on maili, joka sisältää payloadin.
-    ${body}    Create Dictionary    attachmentId  123456
-    ${partti}    Create Dictionary    filename  video.mp4  body  ${body}
-    @{parts_list}    Create List    ${partti}
-    ${payload}    Create Dictionary    parts  ${parts_list}
-    ${maili}    Create Dictionary    payload  ${payload}
-
+    ${maili}    Luo Feikkimaili
     # Kutsutaan haetaan_videon_id-funktiota, joka hakee seuraavan videon id:n odotetulla tavalla.
     ${tulos}    Haetaan Videon Id    ${maili} 
     # Varmistetaan, että haettu viesti id on odotettu "12345", koska funktio hakee ensimmäisen viestin id:n listasta.
@@ -62,6 +52,25 @@ Testaa haetaan videon id hakemisen Try Except
     ${maili}    Create Dictionary    jotain  ${jotain}
 
     ${tulos}    Haetaan Videon Id     ${maili}
+    Should Be Equal    ${tulos}    ${None}
+
+Testaa hae aikaleima
+    # Tässä testissä tarkistetaan hae_aikaleima(maili)-funktion toimivuus.
+    # Testataan, että funktio hakee aikaleiman odotetulla tavalla.
+    # Luodaan maili 
+    ${maili}    Luo Feikkimaili
+    # Kutsutaan hae_aikaleima-funktiota, joka hakee aikaleiman odotetulla tavalla.
+    ${tulos}    Hae Aikaleima     ${maili} 
+    # Varmistetaan, että haettu aikaleima on odotettu "1672574400000", koska funktio hakee internalDate-kentän arvon mailista.
+    Should Be Equal As Strings    ${tulos}    1672574400000
+
+Testaa hae aikaleima Try Except
+    # Tässä testissä tarkistetaan hae_aikaleima-funktion toimivuus try except tilanteessa
+    # Testataan, että funktio palauttaa None virheen sattuessa.
+    ${jotain}    Create Dictionary    attachmentId  123456
+    ${maili}    Create Dictionary    jotain  ${jotain}
+
+    ${tulos}    Hae Aikaleima     ${maili}
     Should Be Equal    ${tulos}    ${None}
 
 *** Keywords ***
@@ -91,4 +100,16 @@ Testin lopetus
     Poista kansiot
     Tarkista että kansiot on poistettu
 
-    
+Luo Feikkimaili    
+    # Luodaan maili 
+    # mailin alin kerros on body, joka sisältää attachmentId:n "123456".
+    # mailin toiseksi alin kerros on partti, joka sisältää filename:n "video.mp4" ja body:n, joka on mailin alin kerros.
+    # mailin keskikerros on parts_list, joka on lista, joka sisältää partti-dictionaryn.
+    # mailin toiseksi ylin kerros on payload, joka sisältää parts_listin. 
+    # mailin ylin kerros on maili, joka sisältää payloadin ja internalDate:n "1672574400000".
+    ${body}    Create Dictionary    attachmentId  123456
+    ${partti}    Create Dictionary    filename  video.mp4  body  ${body}
+    @{parts_list}    Create List    ${partti}
+    ${payload}    Create Dictionary    parts  ${parts_list}
+    ${maili}    Create Dictionary    payload  ${payload}  internalDate  1672574400000
+    RETURN    ${maili}
