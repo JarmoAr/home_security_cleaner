@@ -112,6 +112,27 @@ Testataan haetaan video Try Except
     # Varmistetaan, että haettu video on odotettu video, koska funktio hakee videon mailista.
     Should Be Equal    ${tulos}    ${None}
 
+Testataan haetaan kaikki kameran viestit
+    # Tässä testissä tarkistetaan def hae_kaikki_kameran_viestit(service):-funktion toimivuus.
+    # Testataan, että funktio hakee kaikki kameran viestit odotetulla tavalla.
+    # Luodaan maili
+    ${maili}    Luo Feikkimaili
+    @{viestilista}    Create List    ${maili}
+    ${feikki_vastaus}    Create Dictionary    messages  ${viestilista}
+    ${haun_tulos}    Luo Feikki Service    ${feikki_vastaus}
+    # Kutsutaan hae_kaikki_kameran_viestit-funktiota, joka hakee kaikki kameran viestit odotetulla tavalla.
+    ${tulos}    Hae Kaikki Kameran Viestit     ${haun_tulos}
+    # Varmistetaan, että haettu viestilista on odotettu viestilista, koska funktio hakee kaikki kameran viestit mailista.
+    Should Be Equal    ${tulos}    ${viestilista}
+   
+Testataan haetaan kaikki kameran viestit Try Except
+    # Tässä testissä tarkistetaan def hae_kaikki_kameran_viestit(service):-funktion toimivuus.
+    # Testataan, että funktio toimii oikein virhe tilanteessa.
+    ${tulos}    Hae Kaikki Kameran Viestit     ${None}
+    # Varmistetaan, että haettu viestilista on odotettu viestilista, koska funktio hakee kaikki kameran viestit mailista.
+    Should Be Equal    ${tulos}    ${None}
+
+
 *** Keywords ***
 Luo kansiot
     Create Directory    ${temp_path}

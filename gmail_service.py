@@ -61,8 +61,8 @@ def hae_kaikki_kameran_viestit(service):
         # Palautetaan kaikki haetut viestit
         return kaikki_viestit
 
-    except HttpError as error:
-        log_service.virhe_logi(f"HTTP-virhe tapahtui: {error}", "error_log.txt")
+    except Exception as e:
+        log_service.virhe_logi(f"Virhe tapahtui haettaessa kaikkia kameran viestejä: {e}", "error_log.txt")
         return None
 
 def seuraava_viesti_id(kaikki_viestit):
