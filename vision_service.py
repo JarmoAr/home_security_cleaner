@@ -170,7 +170,7 @@ def onko_oma_auto(kuvakaappaukset, tulokset_yolo):
 
 
 def onko_tuttu_henkilo(kuvakaappaukset):
-        try:
+    try:
         # 1. Tehdään lista kaikista tuttu henkilöistä mallikuvista
         mallikuvat = ["tuttu_henkilo1.jpg", "tuttu_henkilo2.jpg", "tuttu_henkilo3.jpg"]
         malli_encode = []
