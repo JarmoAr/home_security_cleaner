@@ -71,3 +71,4 @@ Tämä sovellus automatisoi valvontakameran lähettämien videoiden hallinnan. S
 
 ---
 *Dokumentti päivitetty: 18.5.2024 - Testau ja laadunvarmistus lisätty.*
+*Dokumentti päivitetty: 02.6.2024 - Testausmoduulit päivitetty.*
