@@ -62,7 +62,12 @@ Tämä sovellus automatisoi valvontakameran lähettämien videoiden hallinnan. S
 3. Testityökaluna Robot Framework ja Github Actions
 
 ## Testaus moduulit
-1. `save_service_tests.robot`: Hoitaa videon dekoodaamisen ja tallennuksen.
+1.  `save_service_tests.robot`: Testaa videon dekoodaamisen ja tallennuksen(save_service.py).
+2.  `gmail_service_test.robot`: Testaa sähköpostien haun (tunnisteella), latauksen ja poiston(gmail_service.py).
+3.  `vision_service_test.robot`: Testaa kasvojentunnistuksen ja palauttaa analyysin tuloksen(vision_service.py).
+4.  `name_service_test.robot`: Testaa nimen koostamista tallennettavalle tiedostolle(name_service.py).
+5.  `save_service_test.robot`: Testaa videon dekoodaamisen ja tallennuksen(save_service.py).
+6.  `log_service_test.robot`: Testaa tarvittavan logituksen(log_service.py).
 
 ---
 *Dokumentti päivitetty: 18.5.2024 - Testau ja laadunvarmistus lisätty.*
