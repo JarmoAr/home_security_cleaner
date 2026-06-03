@@ -91,7 +91,13 @@ def tunnista_kohteet(kuvakaappaukset):
 def onko_oma_koira(kuvakaappaukset):
     try:
         # 1. Tehdään lista kaikista oman koiran mallikuvista
-        mallikuvat = ["oma_koira1.jpg", "oma_koira2.jpg", "oma_koira3.jpg"]
+        kansio_polku = "images/koira"
+        mallikuvat = []
+        if os.path.exists(kansio_polku):
+            for tiedosto in os.listdir(kansio_polku):
+                if tiedosto.endswith((".jpg", ".JPEG", ".png")):
+                    mallikuvat.append(os.path.join(kansio_polku, tiedosto))
+
         malli_encode = []
         
         # 2. Ladataan ja lasketaan piirteet jokaisesta kuvasta silmukassa
@@ -122,57 +128,79 @@ def onko_oma_koira(kuvakaappaukset):
 
 def onko_oma_auto(kuvakaappaukset, tulokset_yolo):
     try:
-        # Käydään läpi YOLOn tekemät havainnot jokaisesta kuvasta
+        # 1. HAETAAN AUTON MALLIKUVAT AUTOMAATTISESTI KANSIOSTA JA LASKETAAN HISTOGRAMMIT
+        kansion_polku = "images/auto"
+        malli_histogrammit = []
+        
+        if os.path.exists(kansion_polku):
+            for tiedosto in os.listdir(kansion_polku):
+                if tiedosto.endswith(('.jpg', '.jpeg', '.png')):
+                    polku = os.path.join(kansion_polku, tiedosto)
+                    m_kuva = cv2.imread(polku)
+                    
+                    if m_kuva is not None:
+                        # Muutetaan HSV-muotoon värianalyysiä varten
+                        m_hsv = cv2.cvtColor(m_kuva, cv2.COLOR_BGR2HSV)
+                        # Lasketaan värisormenjälki (Histogrammi)
+                        hist = cv2.calcHist([m_hsv], [0, 1], None, [50, 60], [0, 180, 0, 256])
+                        cv2.normalize(hist, hist, 0, 1, cv2.NORM_MINMAX)
+                        malli_histogrammit.append(hist)
+
+        # Jos kansio on tyhjä tai kuvia ei löydy, ei voida verrata
+        if len(malli_histogrammit) == 0:
+            return False
+
+        # 2. VERRATAAN VIDEON AUTOJA NÄIHIN SORMENJÄLKIIN
         for i, tulos in enumerate(tulokset_yolo):
             kuva = kuvakaappaukset[i]
             
             for box in tulos.boxes:
                 luokka_id = int(box.cls[0])
                 if malli.names[luokka_id] in ['car', 'truck']:
-                    # 1. HAETAAN KOORDINAAIT JA TARKISTETAAN MUOTO (Farmari)
-                    # Otetaan laatikon nurkat talteen (X ja Y koordinaatit)
+                    # Haetaan koordinaatit ja lasketaan muoto (leveys vs korkeus)
                     x1, y1, x2, y2 = map(int, box.xyxy[0])
                     leveys = x2 - x1
                     korkeus = y2 - y1
                     
-                    # Lasketaan suhdeluku. Sivusta kuvattu farmari on erittäin leveä korkeuteen nähden
                     if korkeus > 0:
                         suhdeluku = leveys / korkeus
                     else:
                         suhdeluku = 0
 
-                    # 2. RAJATAAN AUTO JA TARKISTETAAN VÄRI (Sininen)
+                    # Rajataan auton alue videokuvasta
                     auton_alue = kuva[y1:y2, x1:x2]
-                    
-                    # Muutetaan BGR-kuva HSV-muotoon, jotta sininen sävy löytyy helposti
-                    hsv_kuva = cv2.cvtColor(auton_alue, cv2.COLOR_BGR2HSV)
-                    
-                    # Määritellään sinisen värin rajat HSV-avaruudessa (Standardi sininen)
-                    alempi_sininen = np.array([90, 50, 50])
-                    ylempi_sininen = np.array([130, 255, 255])
-                    
-                    # Tehdään maski: kaikki siniset pikselit muuttuvat valkoisiksi, muut mustiksi
-                    maski = cv2.inRange(hsv_kuva, alempi_sininen, ylempi_sininen)
-                    
-                    # Lasketaan kuinka monta prosenttia auton alueesta on sinistä
-                    sinisia_pikseleita = cv2.countNonZero(maski)
-                    kaikki_pikselit = leveys * korkeus
-                    sinisyyden_prosentti = (sinisia_pikseleita / kaikki_pikselit) * 100
-                    
-                    # TÄSMÄYSTARKISTUS: Jos auto on pitkänomainen (farmari) JA se on sininen!
-                    if suhdeluku > 1.8 and sinisyyden_prosentti > 20:
-                        return True # Se on sataprosenttisen varmasti sinun autosi!
+                    if auton_alue.size == 0:
+                        continue
                         
+                    # Lasketaan videon auton alueesta samanlainen histogrammi
+                    video_hsv = cv2.cvtColor(auton_alue, cv2.COLOR_BGR2HSV)
+                    video_hist = cv2.calcHist([video_hsv], [0, 1], None, [50, 60], [0, 180, 0, 256])
+                    cv2.normalize(video_hist, video_hist, 0, 1, cv2.NORM_MINMAX)
+                    
+                    # Verrataan videon autoa jokaiseen mallikuvaan
+                    for m_hist in malli_histogrammit:
+                        # cv2.HISTCMP_CORREL antaa tuloksen väliltä -1.0 ja 1.0
+                        osuma_tarkkuus = cv2.compareHist(m_hist, video_hist, cv2.HISTCMP_CORREL)
+                        
+                        # TÄSMÄYSTARKISTUS: Jos muoto täsmää farmariin JA värit täsmäävät kuvaan yli 60%
+                        if suhdeluku > 1.8 and osuma_tarkkuus > 0.6:
+                            return True # Auto tunnistettu omaksi!
+                            
         return False
     except Exception as e:
-        log_service.virhe_logi(f"Virhe oman auton tunnistamisessa: {e}", "error_log.txt")
+        log_service.virhe_logi(f"Virhe dynaamisessa auton tunnistamisessa: {e}", "error_log.txt")
         return None
-
 
 def onko_tuttu_henkilo(kuvakaappaukset):
     try:
         # 1. Tehdään lista kaikista tuttu henkilöistä mallikuvista
-        mallikuvat = ["tuttu_henkilo1.jpg", "tuttu_henkilo2.jpg", "tuttu_henkilo3.jpg"]
+        kansio_polku = "images/ihmiset"
+        mallikuvat = []
+        if os.path.exists(kansio_polku):
+            for tiedosto in os.listdir(kansio_polku):
+                if tiedosto.endswith((".jpg", ".JPEG", ".png")):
+                    mallikuvat.append(os.path.join(kansio_polku, tiedosto))
+
         malli_encode = []
         
         # 2. Ladataan ja lasketaan piirteet jokaisesta kuvasta silmukassa
