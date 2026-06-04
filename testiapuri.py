@@ -11,22 +11,28 @@ sys.modules["face_recognition"] = feikki_fr
 # 2. Tehdään feikki ultralytics (YOLO) -kirjasto
 feikki_ultra = ModuleType("ultralytics")
 class FeikkiYOLO:
-    def __init__(self, malli): pass
+    def __init__(self, malli):
+        # Opetetaan feikille, että numero 2 tarkoittaa autoa.
+        self.names = {2: 'car', 0: 'person', 1: 'dog'}
+        
     def predict(self, source, verbose=False):
+        # Määritellään luokat rinnakkain metodin sisällä, jotta ne näkevät toisensa
+        class FeikkiBox:
+            def __init__(self):
+                self.cls = [2]  # Tämä tarkoittaa, että YOLO on tunnistanut auton
+                self.xyxy = [[10, 20, 100, 200]]
+                
         class FeikkiTulos:
-            class FeikkiBox:
-                def __init__(self):
-                    self.cls = [0]
-                    self.xyxy = [10, 20, 100, 200]
             def __init__(self):
                 self.boxes = [FeikkiBox()]
+                
         return [FeikkiTulos()]
 
 feikki_ultra.YOLO = FeikkiYOLO
 sys.modules["ultralytics"] = feikki_ultra
+
 # 3. Tehdään feikki cv2 (OpenCV) -kirjasto pilviajoa varten
 feikki_cv2 = ModuleType("cv2")
-# Tehdään tyhjä VideoCapture-luokka, jotta ota_kuvakaappaukset ei kaadu heti alussa
 class FeikkiVideoCapture:
     def __init__(self, *args, **kwargs): pass
     def get(self, *args): return 0
@@ -35,7 +41,7 @@ class FeikkiVideoCapture:
     def release(self): pass
 
 feikki_cv2.VideoCapture = FeikkiVideoCapture
-feikki_cv2.COLOR_BGR2HSV = 40  # OpenCV:n käyttämä kiinteä numeroarvo
+feikki_cv2.COLOR_BGR2HSV = 40  
 feikki_cv2.HISTCMP_CORREL = 0
 feikki_cv2.cvtColor = lambda kuva, koodi: "feikki_hsv"
 feikki_cv2.calcHist = lambda *args: "feikki_hist"
@@ -44,7 +50,6 @@ feikki_cv2.compareHist = lambda *args: 1.0
 sys.modules["cv2"] = feikki_cv2
 
 def luo_feikki_service(palautettava_data):
-    # Luodaan lennossa olio, jolla on tarvittavat metodit
     class FeikkiService:
         def users(self): return self
         def messages(self): return self
@@ -54,3 +59,8 @@ def luo_feikki_service(palautettava_data):
         def execute(self): return palautettava_data
         
     return FeikkiService()
+
+def luo_feikkikuva():
+    # Tehdään tyhjä, musta kuva (koko 100x100 pikseliä, 3 värikanavaa)
+    import numpy as np
+    return np.zeros((100, 100, 3), dtype=np.uint8)
