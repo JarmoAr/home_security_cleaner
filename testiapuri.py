@@ -24,7 +24,24 @@ class FeikkiYOLO:
 
 feikki_ultra.YOLO = FeikkiYOLO
 sys.modules["ultralytics"] = feikki_ultra
+# 3. Tehdään feikki cv2 (OpenCV) -kirjasto pilviajoa varten
+feikki_cv2 = ModuleType("cv2")
+# Tehdään tyhjä VideoCapture-luokka, jotta ota_kuvakaappaukset ei kaadu heti alussa
+class FeikkiVideoCapture:
+    def __init__(self, *args, **kwargs): pass
+    def get(self, *args): return 0
+    def set(self, *args): return True
+    def read(self): return False, None
+    def release(self): pass
 
+feikki_cv2.VideoCapture = FeikkiVideoCapture
+feikki_cv2.COLOR_BGR2HSV = 40  # OpenCV:n käyttämä kiinteä numeroarvo
+feikki_cv2.HISTCMP_CORREL = 0
+feikki_cv2.cvtColor = lambda kuva, koodi: "feikki_hsv"
+feikki_cv2.calcHist = lambda *args: "feikki_hist"
+feikki_cv2.normalize = lambda *args: None
+feikki_cv2.compareHist = lambda *args: 1.0
+sys.modules["cv2"] = feikki_cv2
 
 def luo_feikki_service(palautettava_data):
     # Luodaan lennossa olio, jolla on tarvittavat metodit
