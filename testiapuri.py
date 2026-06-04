@@ -1,25 +1,15 @@
 import sys
 from types import ModuleType
 
-# 1. Tehdään feikki face_recognition -kirjasto
-feikki_fr = ModuleType("face_recognition")
-feikki_fr.load_image_file = lambda polku: "feikkikuva"
-feikki_fr.face_encodings = lambda kuva: [[0.1, 0.2, 0.3]]
-feikki_fr.compare_faces = lambda lista, enco: [True]
-sys.modules["face_recognition"] = feikki_fr
-
-# 2. Tehdään feikki ultralytics (YOLO) -kirjasto
-feikki_ultra = ModuleType("ultralytics")
+# Luokat pitää määritellä ENSIN, jotta niitä voidaan käyttää alempana!
 class FeikkiYOLO:
     def __init__(self, malli):
-        # Opetetaan feikille, että numero 2 tarkoittaa autoa.
         self.names = {2: 'car', 0: 'person', 1: 'dog'}
         
     def predict(self, source, verbose=False):
-        # Määritellään luokat rinnakkain metodin sisällä, jotta ne näkevät toisensa
         class FeikkiBox:
             def __init__(self):
-                self.cls = [2]  # Tämä tarkoittaa, että YOLO on tunnistanut auton
+                self.cls = [2]  
                 self.xyxy = [[10, 20, 100, 200]]
                 
         class FeikkiTulos:
@@ -28,11 +18,6 @@ class FeikkiYOLO:
                 
         return [FeikkiTulos()]
 
-feikki_ultra.YOLO = FeikkiYOLO
-sys.modules["ultralytics"] = feikki_ultra
-
-# 3. Tehdään feikki cv2 (OpenCV) -kirjasto pilviajoa varten
-feikki_cv2 = ModuleType("cv2")
 class FeikkiVideoCapture:
     def __init__(self, *args, **kwargs): pass
     def get(self, *args): return 0
@@ -40,6 +25,17 @@ class FeikkiVideoCapture:
     def read(self): return False, None
     def release(self): pass
 
+
+# 1. Feikkikirjastot testausta varten 
+# Tehdään feikki face_recognition -kirjasto
+feikki_fr = ModuleType("face_recognition")
+feikki_fr.load_image_file = lambda polku: "feikkikuva"
+feikki_fr.face_encodings = lambda kuva: [[0.1, 0.2, 0.3]]
+feikki_fr.compare_faces = lambda lista, enco: [True]
+sys.modules["face_recognition"] = feikki_fr
+
+# Feikki CV2 -kirjasto (Nyt FeikkiVideoCapture on tunnettu!)
+feikki_cv2 = ModuleType("cv2")
 feikki_cv2.VideoCapture = FeikkiVideoCapture
 feikki_cv2.COLOR_BGR2HSV = 40  
 feikki_cv2.HISTCMP_CORREL = 0
@@ -49,6 +45,18 @@ feikki_cv2.normalize = lambda *args: None
 feikki_cv2.compareHist = lambda *args: 1.0
 sys.modules["cv2"] = feikki_cv2
 
+# feikki numpy-kirjasto
+feikki_np = ModuleType("numpy")
+feikki_np.uint8 = int
+feikki_np.zeros = lambda *args, **kwargs: "feikkikuva_taulukko"
+sys.modules["numpy"] = feikki_np
+
+# feikki ultralytics (YOLO) -kirjasto (Nyt FeikkiYOLO on tunnettu!)
+feikki_ultra = ModuleType("ultralytics")
+feikki_ultra.YOLO = FeikkiYOLO
+sys.modules["ultralytics"] = feikki_ultra
+
+# Robot avainsanat loppuun
 def luo_feikki_service(palautettava_data):
     class FeikkiService:
         def users(self): return self
@@ -57,10 +65,8 @@ def luo_feikki_service(palautettava_data):
         def attachments(self): return self
         def get(self, **kwargs): return self
         def execute(self): return palautettava_data
-        
     return FeikkiService()
 
 def luo_feikkikuva():
-    # Tehdään tyhjä, musta kuva (koko 100x100 pikseliä, 3 värikanavaa)
     import numpy as np
     return np.zeros((100, 100, 3), dtype=np.uint8)
