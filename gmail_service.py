@@ -45,7 +45,7 @@ def hae_kaikki_kameran_viestit(service):
         while True:
             results = service.users().messages().list(
                 userId='me',
-                q='subject:"Motion Detection for"',
+                q='"subject:Motion Detection for"',
                 pageToken=seuraava_sivu).execute()
             
             # Lisää haetut viestit kaikki_viestit-listaan
