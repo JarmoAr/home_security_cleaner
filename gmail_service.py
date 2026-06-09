@@ -34,7 +34,9 @@ def get_service():
         return build('gmail', 'v1', credentials=creds)   
     except Exception as e:
         log_service.virhe_logi(f"Yhteyden muodostaminen epäonnistui: {e}", "error_log.txt")
-        return None
+        # KORJAUS: Ei palauteta None, vaan heitetään virhe eteenpäin perusteluineen!
+        raise RuntimeError(f"Gmail-yhteys poikki (Tarkista token.json / oikeudet). Alkuperäinen virhe: {e}")
+
 
 # Tämä funktio hakee Gmail-viestit, jotka sisältävät "Motion Detection for" otsikon, ja tulostaa niiden ID:n, aiheen, lähettäjän ja päivämäärän.
 def hae_kaikki_kameran_viestit(service):
@@ -122,6 +124,17 @@ def hae_aikaleima(maili):
         log_service.virhe_logi(f"Virhe aikaleiman hakemisessa: {e}", "error_log.txt")
         return None
 
+def poista_viesti_gmailista(service, maili_id):
+    try:
+        print(f"[GMAIL] Siirretään viesti {maili_id} roskakoriin tilan vapauttamiseksi...")
+        # trash() siirtää viestin Gmailin roskakoriin, josta se tuhoutuu automaattisesti 30 päivän kuluttua
+        service.users().messages().trash(userId='me', id=maili_id).execute()
+        print(f"[GMAIL] Viesti {maili_id} siirretty onnistuneesti roskakoriin.")
+        return True
+    except Exception as e:
+        log_service.virhe_logi(f"Virhe viestin poistamisessa: {e}", "error_log.txt")
+        print(f"[GMAIL] !!! Virhe viestin poistamisessa: {e}")
+        return None
 
 # Tämä on pääohjelma, joka suoritetaan, kun skripti ajetaan. Se kutsuu get_service-funktiota ja tarkistaa, onnistuiko yhteyden muodostaminen Gmail API:iin.
 if __name__ == "__main__":

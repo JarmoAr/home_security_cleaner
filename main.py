@@ -16,8 +16,21 @@ delete_path = r"d:\valvontakamera\delete_temp"
 print("Suoritetaan roskakorin ylläpitovoitelu...")
 cleaner_service.siivoa_roskakori(delete_path, paivia_sailytetään=30)
 
-# 1. Muodosta yhteys
-palvelu = gmail_service.get_service()
+# ==============================================================================
+# VAIHE 1: Muodosta yhteys (Suojattu token- ja yhteystarkistus)
+# ==============================================================================
+try:
+    palvelu = gmail_service.get_service()
+except Exception as virhe:
+    print("\n" + "="*80)
+    print("[KRIITTINEN YHTEYSVIRHE] Gmail API -tunnistautuminen epäonnistui!")
+    print(f"Yksityiskohdat: {virhe}")
+    print("-"*80)
+    print("Syy on erittäin todennäköisesti vanhentunut tai epäkelpo token.json-tiedosto.")
+    print("KORJAUSOHJE: Poista tiedosto 'token.json' projektikansiostasi ja aja ohjelma uudestaan.")
+    print("Ohjelma avaa selaimesi automaattisesti uutta tunnistautumista varten.")
+    print("="*80 + "\n")
+    exit(1) # Suljetaan ohjelma virhekoodilla 1
 
 # 2. Hae viestit
 viestit = gmail_service.hae_kaikki_kameran_viestit(palvelu)
@@ -74,6 +87,10 @@ if tallenna_polku and os.path.exists(tallenna_polku):
         os.makedirs(delete_path, exist_ok=True)
         # Siirretään video temp-kansiosta roskakoriin
         shutil.move(tallenna_polku, os.path.join(delete_path, os.path.basename(tallenna_polku)))
+
+    # VAIHE 14: Sähköpostin lopullinen poisto Gmailista (Tilan vapautus)
+    # Koska video on nyt turvassa kiintolevyllä, tuhotaan sähköposti Gmailista!
+    gmail_service.poista_viesti_gmailista(palvelu, maili_id)
 
 print("Pääohjelman suoritus päättynyt onnistuneesti!")
 
