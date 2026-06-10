@@ -32,6 +32,24 @@ Testaa vanhojen tiedostojen poistaminen roskakorista
     File Should Exist    ${temp_path}/uusi_video.mp4
     File Should Not Exist    ${temp_path}/vanha_video.mp4
 
+Testaa alusta virheloki
+    # Testataan, että CleanerService-luokan alusta_virheloki-metodi luo virhelokin oikein.
+    # Kutsu alusta_virheloki-metodia, joka luo virhelokin.
+    Alusta Virheloki    ${CURDIR}/testivirhe_log.txt
+    # Tarkista, että virheloki on luotu ja se on tyhjä.
+    File Should Exist    ${CURDIR}/testivirhe_log.txt
+    ${sisalto}    Get File    ${CURDIR}/testivirhe_log.txt
+    # varmistetaan että virhelokista löytyy teksti "Virheloki luotu:"
+    # joka on alusta_virheloki-metodin kirjoittama teksti, mutta muuten loki on tyhjä.
+    Should Contain    ${sisalto}    Virheloki luotu:
+
+Testaa alusta virheloki try except -rakenteella
+    # Testataan, että CleanerService-luokan alusta_virheloki-metodi toimii oikein,
+    # vaikka virhelokin polku ei olisikaan määritettynä.
+    ${tulos}    Alusta Virheloki    ${None}
+    Should Be Equal    ${tulos}    ${None}
+
+
 *** Keywords ***
 Luo kansiot
     Create Directory    ${temp_path}

@@ -33,3 +33,16 @@ def siivoa_roskakori(roskakori_polku, paivia_sailytetään=30):
     except Exception as e:
         log_service.virhe_logi(f"Virhe roskakorin siivouksessa: {e}", "error_log.txt")
         return None
+
+def alusta_virheloki(virheloki_polku):
+    try:
+        if os.path.exists(virheloki_polku):
+            with open(virheloki_polku, 'w', encoding='utf-8') as f:
+                f.write(f"Virheloki alustettu: {datetime.now()}\n")
+        else:
+            with open(virheloki_polku, 'w', encoding='utf-8') as f:
+                f.write(f"Virheloki luotu: {datetime.now()}\n")
+        return True
+    except Exception as e:
+        log_service.virhe_logi(f"Virhe virhelokin alustamisessa: {e}", "error_log.txt")
+        return None

@@ -15,6 +15,7 @@ delete_path = r"d:\valvontakamera\delete_temp"
 # 0. Automaattinen vanhojen videoiden siivous roskakorista
 print("Suoritetaan roskakorin ylläpitovoitelu...")
 cleaner_service.siivoa_roskakori(delete_path, paivia_sailytetään=30)
+cleaner_service.alusta_virheloki("error_log.txt")
 
 # ==============================================================================
 # VAIHE 1: Muodosta yhteys (Suojattu token- ja yhteystarkistus)
