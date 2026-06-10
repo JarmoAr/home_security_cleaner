@@ -41,19 +41,31 @@ def poimi_uusi_nayte(video_polku, kohde_luokka, tallennus_kansio, tiedosto_alku)
                     nimi = malli.names[luokka_id]
                     
                     if nimi == kohde_luokka:
-                        # KORJAUS 2: Muutetaan xyxy-koordinaatit ensin listaksi lennosta!
-                        koordinaatit = box.xyxy[0].tolist()
+                        koordinaatit = box.xyxy.tolist()[0] if isinstance(box.xyxy.tolist(), list) else box.xyxy.tolist()
                         x1, y1, x2, y2 = map(int, koordinaatit)
                         
+                        # 1. Luodaan leikkaus ENSIN, jotta se on olemassa!
                         leikkaus = kuva[y1:y2, x1:x2]
                         
                         if leikkaus.size > 0:
+                            # 2. Jos etsitään ihmistä (person), vaaditaan että siitä löytyy myös aitoja kasvoja!
+                            if kohde_luokka == 'person':
+                                import face_recognition
+                                # Muutetaan kuva RGB-muotoon face_recognitionia varten
+                                leikkaus_rgb = cv2.cvtColor(leikkaus, cv2.COLOR_BGR2RGB)
+                                kasvot = face_recognition.face_encodings(leikkaus_rgb)
+                                
+                                if len(kasvot) == 0:
+                                    print("[SAMPLE] Ihminen löytyi, mutta kasvot eivät näy. Etsitään parempaa kohtaa videolta...")
+                                    continue # Hypätään tämän yli ja etsitään parempi kuvakulma videolta!
+
+                            # 3. Jos kasvot löytyivät (tai kyseessä on jokin muu kohde kuten auto/koira), tallennetaan kuva!
                             uusi_nimi = f"{tiedosto_alku}{seuraava_numero}.jpg"
                             lopullinen_polku = os.path.join(tallennus_kansio, uusi_nimi)
                             
                             cv2.imwrite(lopullinen_polku, leikkaus)
                             print(f"[SAMPLE] ONNISTUI! Uusi näyte tallennettu: {lopullinen_polku}")
-                            return True 
+                            return True
                         
         print(f"[SAMPLE] Videolta ei löytynyt selkeää kohdetta '{kohde_luokka}'.")
         return False
