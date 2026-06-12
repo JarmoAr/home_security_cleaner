@@ -89,7 +89,7 @@ def onko_oma_koira(kuvakaappaukset, tulokset_yolo):
                         cv2.normalize(hist, hist, 0, 1, cv2.NORM_MINMAX)
                         malli_histogrammit.append(hist)
 
-        print(f"[DEBUG KOIRA] Ladattu muistiin yhteensä {len(malli_histogrammit)} mallikuvaa polusta: {kansio_polku}")
+        # print(f"[DEBUG KOIRA] Ladattu muistiin yhteensä {len(malli_histogrammit)} mallikuvaa polusta: {kansio_polku}")
 
         if len(malli_histogrammit) == 0:
             return False
@@ -127,7 +127,7 @@ def onko_oma_koira(kuvakaappaukset, tulokset_yolo):
                     for m_hist in malli_histogrammit:
                         osuma_tarkkuus = cv2.compareHist(m_hist, video_hist, cv2.HISTCMP_CORREL)
                         
-                        print(f"[DEBUG KOIRA] Turkki/Haalari-väriosuma: {osuma_tarkkuus:.2f}")
+                        # print(f"[DEBUG KOIRA] Turkki/Haalari-väriosuma: {osuma_tarkkuus:.2f}")
                         
                         # Kynnysarvo koiralle (0.25 sallii eri haalarit ja ihonmuutokset joustavasti)
                         if osuma_tarkkuus > 0.25:
@@ -207,10 +207,10 @@ def onko_oma_auto(kuvakaappaukset, tulokset_yolo):
                     onko_yomuoto = kyllaisyys_keskiarvo < 8.0
                     
                     if onko_yomuoto:
-                        print(f"[DEBUG AUTO] YÖMOODI HAVAITTU (Kylläisyys-ka: {kyllaisyys_keskiarvo:.2f})")
+                        # print(f"[DEBUG AUTO] YÖMOODI HAVAITTU (Kylläisyys-ka: {kyllaisyys_keskiarvo:.2f})")
                         # Yöllä luotetaan pelkkään pitkänomaiseen muotoon (suhdeluku), koska väriä ei voida verrata
                         if suhdeluku > 1.2:
-                            print(f"[DEBUG AUTO] Yöajoneuvon muoto ({suhdeluku:.2f}) täsmää farmariin, hyväksytään omaksi!")
+                            #print(f"[DEBUG AUTO] Yöajoneuvon muoto ({suhdeluku:.2f}) täsmää farmariin, hyväksytään omaksi!")
                             return True
                     else:
                         # PÄIVÄMOODI: Ajetaan värihistogrammilaskenta normaalisti
