@@ -45,22 +45,3 @@ def tallenna_video(decoded_video, tiedostonnimi, temp_path, arkisto_path):
     
     except Exception as e:
         return None
-
-# testi osio
-if __name__ == "__main__":
-    # 1. Luodaan testidataa (feikkibitit)
-    testi_bitit = b"Videodataa 123"
-    testi_nimi = "20260428_101425"  # Pelkkä aikaleima ilman päätettä
-    
-    # 2. Määritellään testipolut (voit käyttää r-kirjainta polun edessä)
-    t_path = r"d:\valvontakamera\temp"
-    a_path = r"d:\valvontakamera\arkisto"
-    
-    print("Testataan videon tallennusta...")
-    # 3. Kutsutaan funktiota
-    tulos_polku = tallenna_video(testi_bitit, testi_nimi, t_path, a_path)
-    
-    if tulos_polku:
-        print(f"Onnistui! Tiedosto tallennettu polkuun: {tulos_polku}")
-    else:
-        print("Tallennus epäonnistui.")
