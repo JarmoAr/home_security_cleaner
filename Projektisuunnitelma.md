@@ -1,74 +1,93 @@
-# 🛡️ Valvontakameran Videosiivous (Python & AI)
+# 🛡️ Älykäs Valvontakamerajärjestelmä & AI-Pururi (Batch Processing)
 
-Tämä sovellus automatisoi valvontakameran lähettämien videoiden hallinnan. Se vapauttaa Gmail-tallennustilaa ja suodattaa konenäön avulla pois videot, joissa esiintyy asukkaita tai muita tunnettuja kohteita.
+Tämä sovellus automatisoi valvontakameroiden lähettämien videomeilien hallinnan, analysoinnin ja siivouksen. Järjestelmä vapauttaa dynaamisesti Gmail-tallennustilaa ja suodattaa konenäön (YOLOv8 & Histogrammit & Kasvojentunnistus) avulla pois videot, joissa esiintyy vain asukkaita tai omia ajoneuvoja/eläimiä.
 
 ---
 
 ## 📋 1. Tavoite ja Logiikka
-*   **Gmail-siivous:** Videot ladataan paikallisesti ja poistetaan Gmailista heti, jotta pilvitila ei täyty.
-*   **Kansiohallinta:** Videot kulkevat prosessin läpi: `Gmail` -> `temp` -> `arkisto` (tai poisto).
-*   **AI-suodatus:** Käytetään useita vertailukuvia (asukkaat/tunnetut henkilöt), joiden perusteella videot luokitellaan turhiksi.
+*   Gmail-tilan vapautus: Sähköpostit ladataan eräajona ja siirretään lennosta Gmailin roskakoriin (Trash), jolloin pilvikapasiteetti vapautuu välittömästi.
+*   Dynaaminen kansiohallinta: Videot kulkevat prosessilinjan läpi D-asemalla: Gmail -> temp -> arkisto (jos kriittinen hälytys) tai delete_temp (30 päivän paikallinen roskakori).
+*   Monikerroksinen AI-suodatus: Luokitellaan kohteet älykkäästi. Vain vieraat tai tunnistamattomat kohteet aiheuttavat kriittisen hälytyksen ja videon pysyvän arkistoinnin.
 
 ---
 
 ## 🏗️ 2. Järjestelmän rakenne
 
-### Kansiot ja Sijainnit
-*   **Koodi & Konfiguraatio:** Sijaitsee Git-kloonatussa kansiossa.
-    *   `./vertailukuvat/` - Sisältää kuvat (esim. `mina.jpg`, `perhe.jpg`).
-    *   `./credentials.json` - Google API-avain.
-*   **Videoiden tallennus (D-asema):**
-    *   `D:\valvontakamera\temp\` - Paikka, jonne uudet videot ladataan analyysia varten.
-    *   `D:\valvontakamera\arkisto\` - Lopullinen paikka videoille, joissa on tuntematon kohde.
+### Kansiot ja Sijainnit (D-asema)
+*   D:\valvontakamera\temp\ - Paikka, jonne uudet videot ladataan analyysiä varten.
+*   D:\valvontakamera\arkisto\ - Pysyvä paikka videoille, joissa on kriittinen hälytys (vieras auto/ihminen).
+*   D:\valvontakamera\delete_temp\ - Paikallinen roskakori turhille videoille (automaattinen 30 päivän säilytys).
+*   D:\valvontakamera\sample\ - Manuaalinen tai puoliautomaattinen kansio ongelmavideoiden dynaamiseen opettamiseen.
+
+### Tekoälyn mallikuvapankki (Projektikansio)
+*   ./images/auto/ - Oman auton referenssikuvakaappaukset dynaamista histogrammianalyysiä varten.
+*   ./images/ihmiset/ - Asukkaiden kasvokuvat (face_recognition).
+*   ./images/koira/ - Oman koiran (kiinanharjakoira) dynaaminen turkki- ja haalariväripankki.
 
 ### Moduulit
-1.  `main.py`: Ohjaa koko prosessia ja hallitsee tiedostojen siirtoja.
-2.  `gmail_service.py`: Hoitaa sähköpostien haun (tunnisteella), latauksen ja poiston.
-3.  `vision_service.py`: Suorittaa kasvojentunnistuksen ja palauttaa analyysin tuloksen.
-4.  `name_service.py`: Hoitaa nimen koostamista tallennettavalle tiedostolle.
-5.  `save_service.py`: Hoitaa videon dekoodaamisen ja tallennuksen.
-6.  `log_service.py`: Hoitaa tarvittavan logituksen.
+1. main.py: Ohjaa prosessia tehokkaana eräajona (Batch processing loop), hallitsee vikasietoisuutta (try-except-suojat) ja suorittaa dynaamisen reitityksen.
+
+2. gmail_service.py: Hallitsee Google API -tunnistautumista, token-virheiden käsittelyä, sähköpostien hakua, videoiden latausta ja viestien poistoa.
+
+3. vision_service.py: Suorittaa monikerroksisen konenäköanalyysin: YOLOv8-kohdetunnistus, 2D-värihistogrammivertailu (BGR2HSV) ja dynaaminen infrapuna-yömooditunnistus (Saturation-keskiarvon seuranta).
+
+4. cleaner_service.py: Suorittaa edellisen ajokerran virhelokin (error_log.txt) dynaamisen alustuksen aikaleimalla ja siivoaa yli 30 päivää vanhat videot paikallisesta roskakorista.
+
+5. name_service.py: Muuntaa sähköpostin sisäiset aikaleimat standardeiksi suomalaisiksi tiedostonimiksi.
+
+6. save_service.py: Dekoodaa Base64-videodatan ja tallentaa sen kiintolevylle varmistaen, etteivät olemassa olevat tiedostot ylikirjoitu (automaattinen numerointi).
+
+7. sample_service.py: Erillinen puoliautomaattinen työkalu, joka etsii dynaamisesti sample-kansion videoista halutut kohteet (car/person/dog) ja leikkaa ne Tensor-muunnoksilla suoraan mallikuvapankkiin.
+
+8. log_service.py: Kirjoittaa keskitetyt virheet lokitiedostoihin.
 
 
 ---
 
 ## ⚙️ 3. Työnkulku (Detailed Workflow)
 
-1.  **Haku ja Työlista:**
-    Ohjelma hakee kaikki "kameratunnisteella" löytyvät viestit kerralla hyödyntäen sivutusta (nextPageToken).
-    Viestilista käännetään ympäri (reverse), jotta prosessi alkaa vanhimmista viesteistä.
-2.  **Lataus:** Video ladataan ja tallennetaan polkuun `D:\valvontakamera\temp\`.
-3.  **Vapautus:**  Viesti siirretään Gmailin roskakoriin (Trash) heti onnistuneen latauksen jälkeen pilvitilan vapauttamiseksi.
-4.  **AI-Analyysi:** 
-    *   Ladataan kaikki kasvot `./vertailukuvat/` -kansioista.
-    *   Käydään läpi `temp`-kansion videot.
-5.  **Lopullinen sijoitus:**
-    *   **Tunnistettu asukas:** Video poistetaan `temp`-kansioista (turha tallenne).
-    *   **Tuntematon ihminen:** Video siirretään `D:\valvontakamera\arkisto\` -kansioon.
-    *   **Ei ihmistä:** Jos videolla ei ole liikettä tai kasvoja, se poistetaan `temp`-kansiosta.
+1. Järjestelmän alustus: Ohjelma tyhjentää edellisen ajokerran virhelokin ja leimaa uuden alun aikaleimalla. Paikallinen roskakori siivotaan vanhoista tiedostoista.
+
+2. Yhteys & Token-suoja: Ohjelma tarkistaa Google API -yhteyden. Jos token.json on vanhentunut tai viallinen, se heittää hallitun poikkeuksen ja antaa suomenkieliset korjausohjeet.
+
+3. Eräajon haku: Ohjelma lataa viestit muistiin dynaamisella otsikkohaulla ja prosessoi ne halutussa eräkoossa (esim. 10 viestiä kerralla) säästääkseen API-kyselyrajoja (Rate Limiting).
+
+4. Lataus & Vapautus: Video ladataan temp-kansioon ja sähköposti siirretään heti Gmailin roskakoriin tilan vapauttamiseksi.
+
+5. Dynaaminen AI-Analyysi:
+    1. YOLOv8 tunnistaa objektit (auto, ihminen, eläin).
+    
+    2. Päivämoodi: Jos kuvassa on värejä, auton ja koiran tunnistus käyttää normalisoitua 2D-korrelaatiohistogrammia (värisävy + kylläisyys). Ihmiset tunnistetaan kasvojen piirteistä.
+    
+    3. Yömoodi (Infrapuna): Jos tekoäly laskee kuvan värikylläisyyden keskiarvoksi lähellä nollaa, järjestelmä vaihtaa lennosta taktiikkaa ja hyväksyy oman auton puhtaasti farmari-suhdeluvun (leveys/korkeus) perusteella.
+
+6. Tiedostoreititys: Jos videolta löytyy "vieras_ihminen" tai "vieras_auto", video lukitaan arkistoon. Jos kohteet ovat tuttuja, video lentää delete_temp-kansioon odottamaan automaattista tuhoa.
 
 ---
 
 ## 🛠️ 4. Tekniset vaatimukset
-*   **Kirjastot:** `google-api-python-client`, `opencv-python`, `face_recognition`, `shutil`.
-*   **Laitteisto:** Riittävästi tilaa D-asemalla videoiden arkistointiin.
-*   **Tunniste:** Käytetään kameran viestien yksilöllistä tunnistetta haun rajaamiseen.
+*   **Kirjastot:** `google-api-python-client`, `google-auth-oauthlib`, `opencv-python`, `face_recognition`, `ultralytics` (YOLOv8), `numpy`, `shutil`.
+*   **Yhteensopivuus:** Kehitetty ja testattu tuotantovalmiiksi Windows-ympäristössä (D-aseman kansiorakenne). Automaattinen testausympäristö (CI) on yhteensopiva Linux-pohjaisen GitHub Actions -pilviajon kanssa.
 
 ---
 
-## Testaus ja laadunvarmistus
-1. Tehdään yksikkötestaus (Unit Testing)
-2. Testit ajetaan automaattisena regressiontestauksena (CI) aina, kun koodia pusketaan Gittiin.
-3. Testityökaluna Robot Framework ja Github Actions
+## 🧪 5. Testaus ja Laadunvarmistus (CI/CD)
+1. Järjestelmälle on rakennettu kattava automaattinen regressiontestaus Robot Framework -työkalulla.
 
-## Testaus moduulit
-1.  `save_service_tests.robot`: Testaa videon dekoodaamisen ja tallennuksen(save_service.py).
-2.  `gmail_service_test.robot`: Testaa sähköpostien haun (tunnisteella), latauksen ja poiston(gmail_service.py).
-3.  `vision_service_test.robot`: Testaa kasvojentunnistuksen ja palauttaa analyysin tuloksen(vision_service.py).
-4.  `name_service_test.robot`: Testaa nimen koostamista tallennettavalle tiedostolle(name_service.py).
-5.  `save_service_test.robot`: Testaa videon dekoodaamisen ja tallennuksen(save_service.py).
+2. Testit ajetaan eristetyssä GitHub Actions -pilviympäristössä (CI) aina, kun koodia pusketaan Gittiin.
+
+3. Pilviajoa ja OpenCV/YOLO-riippuvuuksia varten järjestelmä käyttää älykästä suojamuuria (testiapuri.py), joka eristää Tensor- ja histogrammilaskennat testiajon ajaksi ilman, että aitoa tuotantokoodia tarvitsee muuttaa.
+
+## Testausmoduulit (30 testitapausta):
+1.  `save_service_tests.robot`: Varmistaa Base64-dekoodauksen ja automaattisen tiedostojen numeroinnin.
+2.  `gmail_service_test.robot`: Testaa API-rajapinnat ja suojatut viestien haut.
+3.  `vision_service_test.robot`: Testaa kasvojentunnistuksen ja kohteiden tunnistamisen suojatut rajapinnat (Run Keyword And Ignore Error).
+4.  `name_service_test.robot`: Testaa nimen koostamista tallennettavalle tiedostolle.
+5.  `cleaner_service_test.robot`: Testaa dynaamisten lokitiedostojen luonnin, alustuksen sekä vanhojen videoiden automaattisen poiston aikaleimapakotuksilla (Set Modified Time).
 6.  `log_service_test.robot`: Testaa tarvittavan logituksen(log_service.py).
 
 ---
-*Dokumentti päivitetty: 18.5.2024 - Testau ja laadunvarmistus lisätty.*
-*Dokumentti päivitetty: 02.6.2024 - Testausmoduulit päivitetty.*
+*Dokumentti päivitetty: 12.6.2026 - Päivitetty eräajot, YOLOv8-logiikka, infrapuna-yömoodi, sample_service-oppimispalvelu sekä dynaamiset virheloki-alustukset.*
+
+
+
