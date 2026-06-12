@@ -32,7 +32,7 @@ def tunnista_kohteet(kuvakaappaukset):
         malli = YOLO("yolov8n.pt")
         kohteen_nimi = [] 
 
-        tulokset = malli.predict(source=kuvakaappaukset, verbose=False)
+        tulokset = malli.predict(source=kuvakaappaukset, verbose=False, conf=0.40)
 
         for i, tulos in enumerate(tulokset):
             for box in tulos.boxes:
