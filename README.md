@@ -4,11 +4,11 @@
 
 Smart Security Cleaner automates the processing of security camera emails and video attachments received in Gmail.
 
-The application analyzes incoming messages, processes attached videos, archives or removes unnecessary material, and helps prevent Gmail storage from filling up with large security camera files.
+The application analyzes incoming messages, processes attached videos using an AI computer vision layer, archives critical alerts, or routes safe recordings into a local quarantine folder. This helps prevent Gmail storage from filling up with large security camera files.
 
 The project is also used as a learning platform for:
 
-* Python development
+* Python development (AI & Computer Vision)
 * Robot Framework test automation
 * GitHub Actions CI workflows
 * Modern QA and automation practices
@@ -19,44 +19,50 @@ The project is also used as a learning platform for:
 
 Smart Security Cleaner automatisoi Gmailiin saapuvien valvontakameraviestien ja videoiden käsittelyn.
 
-Sovellus analysoi saapuvat sähköpostit, käsittelee videoliitteet sekä arkistoi tai poistaa tarpeettoman materiaalin. Tavoitteena on estää Gmail-tilin täyttyminen suurista valvontakameravideoista ja vähentää manuaalisen käsittelyn tarvetta.
+Sovellus analysoi saapuvat sähköpostit, käsittelee videoliitteet älykkään tekoälykerroksen (AI/Konenäkö) avulla sekä arkistoi tai poistaa tarpeettoman materiaalin. Tavoitteena on estää Gmail-tilin täyttyminen suurista valvontakameravideoista ja vähentää manuaalisen käsittelyn tarvetta.
 
 Projektia käytetään samalla oppimisprojektina seuraaviin aiheisiin:
 
-* Python-kehitys
+* Python-kehitys (Tekoäly & Konenäkö)
 * Robot Framework -testiautomaatio
 * GitHub Actions CI -workflowt
 * Modernit QA- ja automaatiokäytännöt
 
-
 ---
 
-## Workflow
+## Workflow / Työnkulku
 
 ```mermaid
 flowchart TD
     A[Security Camera] --> B[Gmail Inbox]
-    B --> C[Python Application]
-    C --> D[Analyze Email and Video Attachments]
-    D --> E[Archive Files]
-    D --> F[Delete Unnecessary Files]
-    D --> G[Flag for Manual Review]
+    B --> C[Python Application & Batch Processing]
+    C --> D[YOLOv8 & 2D-Histogram & Night IR Mode Analysis]
+    D -->|Unknown Object Found| E[D:\valvontakamera\arkisto]
+    D -->|Known Object Found| F[D:\valvontakamera\delete_temp]
+    
+    C -->|After Local Download| G[Move Email to Gmail Trash]
 
-    H[GitHub Actions] --> I[Robot Framework Tests]
+    H[GitHub Actions CI] --> I[Robot Framework Tests 30/30 PASS]
     I --> C
 ```
-## Planned features
-
-* Implement retention-based quarantine folder for deleted videos
-* Add configurable retention period (e.g. 7–30 days)
-* Improve email filtering rules
-* Expand logging and monitoring
 
 ---
 
-## Retention / deletion model (future improvement)
+## Features / Ominaisuudet
 
-* Safe video → Archive
-* Uncertain video → Review folder
-* Unwanted video → Quarantine (retained X days)
-* Final cleanup job removes expired quarantine files
+*   **Batch Processing Eräajo:** Käsittelee viestit tehokkaasti määritetyssä eräkoossa (esim. 10 viestiä kerralla) säästääkseen Google API -kyselyrajoja (Rate Limiting).
+*   **Multi-Layer AI Processing:** Hyödyntää YOLOv8-objektitunnistusta, OpenCV:n dynaamisia 2D-värihistogrammeja (BGR2HSV) sekä dynaamista infrapuna-yömooditunnistusta (Saturation-keskiarvon analyysi).
+*   **Retention-based Quarantine Model:** Ohjaa turvalliset videot automaattisesti paikalliseen roskakoriin (`delete_temp`), josta taustapalvelu tuhoaa ne 30 päivän säilytysajan jälkeen.
+*   **Automated Log Management:** Alustaa ja leimaa järjestelmän oman virhelokin (`error_log.txt`) automaattisesti jokaisen uuden ajokerran alussa aikaleimalla.
+*   **Sample Bank Tool:** Sisältää puoliautomaattisen dynaamisen työkalun (`sample_service.py`), jolla tekoälylle voidaan opettaa Tensor-muunnoksilla uusia kohteita (asukkaat, lemmikit, omat autot) suoraan mallikuvakansioihin.
+
+---
+
+## Retention / deletion model (Karanteeni- ja säilytysmalli)
+
+*   **Critical / Unknown target** (Vieras ihminen/auto) ➔ `D:\valvontakamera\arkisto\` (Pysyvä tallennus)
+*   **Safe / Known target** (Oma auto, asukas, oma koira) ➔ `D:\valvontakamera\delete_temp\` (Karanteeni)
+*   **Final cleanup job** removes expired quarantine files after 30 days.
+
+---
+*Document updated: June 2026 - Features updated to match the production-ready YOLOv8 & IR-Night mode architecture.*
