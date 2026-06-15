@@ -15,6 +15,14 @@ The project is also used as a learning platform for:
 
 ---
 
+## 🛠️ Built With / Teknologiat
+* **Languages:** Python
+* **Computer Vision & AI:** YOLOv8, OpenCV (BGR2HSV, Color Histograms)
+* **Automation & CI/CD:** GitHub Actions
+* **Testing & QA:** Robot Framework
+* **APIs:** Gmail API (OAuth2)
+
+
 ## Suomi
 
 Smart Security Cleaner automatisoi Gmailiin saapuvien valvontakameraviestien ja videoiden käsittelyn.
@@ -47,14 +55,15 @@ flowchart TD
 ```
 
 ---
-
 ## Features / Ominaisuudet
 
-*   **Batch Processing Eräajo:** Käsittelee viestit tehokkaasti määritetyssä eräkoossa (esim. 10 viestiä kerralla) säästääkseen Google API -kyselyrajoja (Rate Limiting).
+*   **Batch Processing Eräajo:** Käsittelee viestit tehokkaasti määritetyssä eräkoossa (koodi stressitestattu onnistuneesti 500 viestin eräajolla) säästääkseen Google API -kyselyrajoja (Rate Limiting).
 *   **Multi-Layer AI Processing:** Hyödyntää YOLOv8-objektitunnistusta, OpenCV:n dynaamisia 2D-värihistogrammeja (BGR2HSV) sekä dynaamista infrapuna-yömooditunnistusta (Saturation-keskiarvon analyysi).
 *   **Retention-based Quarantine Model:** Ohjaa turvalliset videot automaattisesti paikalliseen roskakoriin (`delete_temp`), josta taustapalvelu tuhoaa ne 30 päivän säilytysajan jälkeen.
 *   **Automated Log Management:** Alustaa ja leimaa järjestelmän oman virhelokin (`error_log.txt`) automaattisesti jokaisen uuden ajokerran alussa aikaleimalla.
-*   **Sample Bank Tool:** Sisältää puoliautomaattisen dynaamisen työkalun (`sample_service.py`), jolla tekoälylle voidaan opettaa Tensor-muunnoksilla uusia kohteita (asukkaat, lemmikit, omat autot) suoraan mallikuvakansioihin.
+*   **Visual Debugging Tool (`katso_havainnot.py`):** Työkalu analyysin manuaaliseen jälkitarkistukseen. Ajaa videon uudelleen ja generoi erilliseen tarkistuskansioon kuvakaappaukset, joihin on piirretty bounding boxit ja tunnistetut luokat (esim. "Vieras auto", "Ihminen").
+*   **MLOps Data Labeling (`sample_service.py`):** Puoliautomaattinen työkalu tekoälymallin opettamiseen ja datan korjaamiseen. Jos järjestelmä tekee virhetulkinnan (esim. luokittelee oman auton vieraaksi), työkalulla voidaan poimia videosta näytekuva Tensor-muunnoksilla ja tallentaa se suoraan oikeaan mallikuvakansioon jatko-opetusta varten.
+
 
 ---
 
