@@ -53,7 +53,6 @@ flowchart TD
     H[GitHub Actions CI] --> I[Robot Framework Tests: 30/30 PASS]
     I -->|Trigger on Push / PR| C
 
-    %% Värjätään testien onnistuminen kirkkaan vihreäksi rekrytoijaa varten
     style I fill:#238636,stroke:#2ea44f,color:#fff,font-weight:bold
 
 ```
