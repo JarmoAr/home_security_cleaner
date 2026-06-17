@@ -3,6 +3,7 @@ import os
 from ultralytics import YOLO
 import vision_service
 import log_service
+from config import SAMPLE_PATH
 
 def poimi_uusi_nayte(video_polku, kohde_luokka, tallennus_kansio, tiedosto_alku):
     try:
@@ -80,7 +81,7 @@ def poimi_uusi_nayte(video_polku, kohde_luokka, tallennus_kansio, tiedosto_alku)
 # TÄMÄN VALIKON AVULLA VOIT AJAA TÄTÄ TYÖKALUA KÄSIN
 # ==============================================================================
 if __name__ == "__main__":
-    sample_kansio = r"d:\valvontakamera\sample"
+    sample_kansio = str(SAMPLE_PATH)
     os.makedirs(sample_kansio, exist_ok=True)
     
     # 1. Haetaan kaikki mp4-videot automaattisesti kansiosta

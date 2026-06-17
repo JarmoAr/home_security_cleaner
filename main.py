@@ -6,11 +6,15 @@ import save_service
 import name_service
 import vision_service
 import cleaner_service
+from config import TEMP_PATH, ARKISTO_PATH, DELETE_PATH, luo_kansiot
 
 # Paths
-temp_path = r"d:\valvontakamera\temp"
-arkisto_path = r"d:\valvontakamera\arkisto"
-delete_path = r"d:\valvontakamera\delete_temp"
+# Varmistetaan, että kaikki tarvittavat kansiot on luotu
+luo_kansiot()  
+
+temp_path = str(TEMP_PATH)
+arkisto_path = str(ARKISTO_PATH)
+delete_path = str(DELETE_PATH)
 
 # 0. Automaattinen vanhojen videoiden siivous roskakorista
 print("Suoritetaan roskakorin ylläpitovoitelu...")
@@ -91,7 +95,6 @@ for viesti_info in viestit:
                 shutil.move(tallenna_polku, os.path.join(arkisto_path, os.path.basename(tallenna_polku)))
             else:
                 print("Video todettu turhaksi. Siirretään roskakoriin.")
-                os.makedirs(delete_path, exist_ok=True)
                 shutil.move(tallenna_polku, os.path.join(delete_path, os.path.basename(tallenna_polku)))
 
         # 14. Sähköpostin lopullinen poisto Gmailista

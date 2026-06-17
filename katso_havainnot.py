@@ -2,6 +2,7 @@ import os
 import cv2
 from ultralytics import YOLO
 import vision_service
+from config import AI_RESULTS_PATH
 
 def analysoi_video_yksitellen(video_polku, tarkistus_kansio):
     videon_perusnimi = os.path.splitext(os.path.basename(video_polku))[0]
@@ -94,7 +95,7 @@ def analysoi_video_yksitellen(video_polku, tarkistus_kansio):
     print("="*60 + "\n")
 
 if __name__ == "__main__":
-    tarkistus_kansio = r"D:\valvontakamera\tarkistettavat"
+    tarkistus_kansio = str(AI_RESULTS_PATH)
     os.makedirs(tarkistus_kansio, exist_ok=True)
     
     videot = [f for f in os.listdir(tarkistus_kansio) if f.endswith(('.mp4', '.avi', '.mkv'))]
