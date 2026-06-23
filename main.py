@@ -41,7 +41,7 @@ except Exception as virhe:
 viestit = gmail_service.hae_kaikki_kameran_viestit(palvelu)
 
 # ASETETAAN ERÄKOKO: Kuinka monta viestiä käsitellään tällä yhdellä ajokerralla (esim. 5 viestiä)
-era_koko = 300
+era_koko = 1
 kasitellyt = 0
 
 # ALOITETAAN SILMUKKA: Käydään viestejä läpi yksitellen muistista
