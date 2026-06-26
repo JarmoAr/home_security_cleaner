@@ -18,7 +18,7 @@ def analysoi_video_yksitellen(video_polku, tarkistus_kansio):
     malli = YOLO("yolov8n.pt")
     
     # 3. Ajetaan ennustus kuville
-    tulokset = malli.predict(source=kuvat, verbose=False, conf=0.55)
+    tulokset = malli.predict(source=kuvat, verbose=False, conf=0.60)
 
     haamuloydokset = False
 
