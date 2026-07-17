@@ -9,7 +9,8 @@ import save_service
 import name_service
 import vision_service
 import cleaner_service
-from config import TEMP_PATH, ARKISTO_PATH, DELETE_PATH, luo_kansiot
+# main.py tiedoston yläreunaan:
+from config import WATCH_PATH, TEMP_PATH, ARCHIVE_PATH, DELETE_PATH, create_directories
 
 # Configuration
 WATCH_DIRECTORY = "./incoming_videos"  # The directory where the camera drops new files
@@ -17,7 +18,7 @@ CHECK_INTERVAL_SECONDS = 2  # How often to scan the folder
 
 def main():
     # Luo tarvittavat kansiot (temp, arkisto jne.)
-    luo_kansiot()  
+    create_directories()  
     
     # Käynnistetään uusi automaattisesti rullaava loki (säästetään 7 päivää)
     log_service.initialize_logger(days_to_keep=7)
@@ -49,15 +50,15 @@ def process_video(file_path: Path, temp_path: str, archive_path: str, delete_pat
         # 4. AI Vision Processing
         if os.path.exists(temp_target_path):
             print("[AI] Capturing screenshots for analysis...")
-            screenshots = vision_service.ota_kuvakaappaukset(temp_target_path)
+            screenshots = vision_service.capture_screenshots(temp_target_path)
             
             print("[AI] Analyzing objects in screenshots...")
-            detections = vision_service.tunnista_kohteet(screenshots)
+            detections = vision_service.detect_objects(screenshots)
             print(f"[AI] Results: {detections}")
             
             # 5. Route the file based on AI results
             # Check if any unknown objects were detected
-            critical_targets = ["vieras_ihminen", "vieras_auto", "vieras_elain"]
+            critical_targets = ["unknown_person", "unknown_car", "unknown_animal"]
             if any(target in detections for target in critical_targets):
                 print("[CRITICAL] Unrecognized object detected! Moving video to ARCHIVE.")
                 shutil.move(temp_target_path, os.path.join(archive_path, os.path.basename(temp_target_path)))
@@ -73,11 +74,11 @@ def process_video(file_path: Path, temp_path: str, archive_path: str, delete_pat
 
 def main():
     # Ensure all required folders are created at startup
-    luo_kansiot()  
+    create_directories() 
     
     # Setup paths
     temp_path = str(TEMP_PATH)
-    archive_path = str(ARKISTO_PATH)
+    archive_path = str(ARCHIVE_PATH)
     delete_path = str(DELETE_PATH)
     
     # Automatic trash cleanup (runs once at startup)
@@ -94,21 +95,23 @@ def main():
 
     try:
         while True:
-            # Scan the folder for any .mp4 files
+            # Scan the directory for all .mp4 files
             video_files = list(watch_path.glob("*.mp4"))
             
             if video_files:
-                for file_path in video_files:
-                    # Check if the camera has finished writing the file
-                    # If the file size is still changing, wait for it to finish
-                    initial_size = file_path.stat().st_size
-                    time.sleep(0.5)
-                    
-                    if file_path.stat().st_size == initial_size and initial_size > 0:
-                        # File is stable and ready to be processed
-                        process_video(file_path, temp_path, archive_path, delete_path)
+                # Process only the first file in the list for this cycle
+                file_path = video_files[0]
+                
+                # Check the file size to see if it is still being written
+                initial_size = file_path.stat().st_size
+                time.sleep(0.5)
+                
+                # If the file size is stable, the camera has finished writing
+                if file_path.stat().st_size == initial_size and initial_size > 0:
+                    # Process the video and immediately loop back to refresh the list
+                    process_video(file_path, temp_path, archive_path, delete_path)
             
-            # Wait before the next folder scan
+            # Wait before the next directory scan
             time.sleep(CHECK_INTERVAL_SECONDS)
             
     except KeyboardInterrupt:

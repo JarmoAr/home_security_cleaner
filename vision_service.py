@@ -51,22 +51,22 @@ def detect_objects(screenshots):
                     if is_own_dog(screenshots, results):
                         final_label = "own_dog"
                     else:
-                        final_label = "vieras_elain"
+                        final_label = "unknown_animal"
                 
                 elif name in ['cat', 'bird', 'horse', 'sheep']:
-                    final_label = "vieras_elain"
+                    final_label = "unknown_animal"
 
                 elif name == 'person':
                     if is_known_person(screenshots):
-                        final_label = "tuttu_ihminen"
+                        final_label = "known_person"
                     else:
-                        final_label = "vieras_ihminen"
+                        final_label = "unknown_person"
 
                 elif name in ['car', 'truck']:
                     if is_own_car(screenshots, results):
                         final_label = "own_car"
                     else:
-                        final_label = "vieras_auto"
+                        final_label = "unknown_car"
 
                 if final_label and final_label not in detected_labels:
                     detected_labels.append(final_label)
