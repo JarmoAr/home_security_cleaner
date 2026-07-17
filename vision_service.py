@@ -1,260 +1,249 @@
 import os
 import cv2
-import log_service
 import face_recognition
 from ultralytics import YOLO
+import log_service
 
-def ota_kuvakaappaukset(video):
+def capture_screenshots(video_path):
+    """
+    Captures video frames every 2 seconds and returns them in a list.
+    """
     try:
-        cap = cv2.VideoCapture(video)
+        cap = cv2.VideoCapture(video_path)
         fps = cap.get(cv2.CAP_PROP_FPS)
         if fps > 0:
             video_length = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps 
         else:
             video_length = 0
         
-        kuvakaappaukset = []
-        sekunti = 0
-        while sekunti < video_length:
-            cap.set(cv2.CAP_PROP_POS_MSEC, sekunti * 1000)
-            success, kuva = cap.read()
+        screenshots = []
+        second = 0
+        while second < video_length:
+            cap.set(cv2.CAP_PROP_POS_MSEC, second * 1000)
+            success, frame = cap.read()
             if success:
-                kuvakaappaukset.append(kuva)
-            sekunti += 2
+                screenshots.append(frame)
+            second += 2
         cap.release()
-        return kuvakaappaukset
+        return screenshots
     except Exception as e:
-        log_service.virhe_logi(f"Virhe kuvakaappausten ottamisessa: {e}", "error_log.txt")
+        log_service.log_error(f"Error capturing screenshots: {e}")
         return []        
 
-def tunnista_kohteet(kuvakaappaukset):
+def detect_objects(screenshots):
+    """
+    Analyzes screenshots using YOLOv8 and categorizes detected objects.
+    """
     try:
-        malli = YOLO("yolov8n.pt")
-        kohteen_nimi = [] 
+        model = YOLO("yolov8n.pt")
+        detected_labels = [] 
 
-        tulokset = malli.predict(source=kuvakaappaukset, verbose=False, conf=0.60)
+        results = model.predict(source=screenshots, verbose=False, conf=0.60)
 
-        for i, tulos in enumerate(tulokset):
-            for box in tulos.boxes:
-                luokka_id = int(box.cls) if hasattr(box.cls, '__getitem__') else int(box.cls.item() if hasattr(box.cls, 'item') else box.cls)
-                nimi = malli.names[luokka_id]
+        for i, result in enumerate(results):
+            for box in result.boxes:
+                class_id = int(box.cls) if hasattr(box.cls, '__getitem__') else int(box.cls.item() if hasattr(box.cls, 'item') else box.cls)
+                name = model.names[class_id]
                 
-                lopullinen_leima = None
+                final_label = None
 
-                if nimi == 'dog':
-                    if onko_oma_koira(kuvakaappaukset, tulokset):
-                        lopullinen_leima = "oma_koira"
+                if name == 'dog':
+                    if is_own_dog(screenshots, results):
+                        final_label = "own_dog"
                     else:
-                        lopullinen_leima = "vieras_elain"
+                        final_label = "vieras_elain"
                 
-                elif nimi in ['cat', 'bird', 'horse', 'sheep']:
-                    lopullinen_leima = "vieras_elain"
+                elif name in ['cat', 'bird', 'horse', 'sheep']:
+                    final_label = "vieras_elain"
 
-                elif nimi == 'person':
-                    if onko_tuttu_henkilo(kuvakaappaukset):
-                        lopullinen_leima = "tuttu_ihminen"
+                elif name == 'person':
+                    if is_known_person(screenshots):
+                        final_label = "tuttu_ihminen"
                     else:
-                        lopullinen_leima = "vieras_ihminen"
+                        final_label = "vieras_ihminen"
 
-                elif nimi in ['car', 'truck']:
-                    if onko_oma_auto(kuvakaappaukset, tulokset):
-                        lopullinen_leima = "oma_auto"
+                elif name in ['car', 'truck']:
+                    if is_own_car(screenshots, results):
+                        final_label = "own_car"
                     else:
-                        lopullinen_leima = "vieras_auto"
+                        final_label = "vieras_auto"
 
-                if lopullinen_leima and lopullinen_leima not in kohteen_nimi:
-                    kohteen_nimi.append(lopullinen_leima)
+                if final_label and final_label not in detected_labels:
+                    detected_labels.append(final_label)
         
-        return kohteen_nimi
+        return detected_labels
     except Exception as e:
-        log_service.virhe_logi(f"Virhe kohteiden tunnistamisessa: {e}", "error_log.txt")
+        log_service.log_error(f"Error detecting objects: {e}")
         return []
 
-def onko_oma_koira(kuvakaappaukset, tulokset_yolo):
+def is_own_dog(screenshots, yolo_results):
+    """
+    Compares the detected dog's color histogram with template images of the own dog.
+    """
     try:
-        nykyinen_skripti_polku = os.path.dirname(os.path.abspath(__file__))
-        kansio_polku = os.path.join(nykyinen_skripti_polku, "images", "koira")
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        folder_path = os.path.join(script_dir, "images", "koira")
         
-        malli_histogrammit = []
-        if os.path.exists(kansio_polku):
-            for tiedosto in os.listdir(kansio_polku):
-                if tiedosto.endswith((".jpg", ".jpeg", ".png")):
-                    polku = os.path.join(kansio_polku, tiedosto)
-                    m_kuva = cv2.imread(polku)
+        model_histograms = []
+        if os.path.exists(folder_path):
+            for file in os.listdir(folder_path):
+                if file.endswith((".jpg", ".jpeg", ".png")):
+                    path = os.path.join(folder_path, file)
+                    img = cv2.imread(path)
                     
-                    if m_kuva is not None:
-                        m_hsv = cv2.cvtColor(m_kuva, cv2.COLOR_BGR2HSV)
-                        # Kanavat 0 ja 1 (Sävy ja Kylläisyys)
-                        hist = cv2.calcHist([m_hsv], [0, 1], None, [50, 60], [0, 180, 0, 256])
+                    if img is not None:
+                        hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+                        # Lasketaan 2D-histogrammi kanaville 0 (Sävy) ja 1 (Kylläisyys)
+                        hist = cv2.calcHist([hsv_img], [0, 1], None, [50, 60], [0, 180, 0, 256])
                         cv2.normalize(hist, hist, 0, 1, cv2.NORM_MINMAX)
-                        malli_histogrammit.append(hist)
+                        model_histograms.append(hist)
 
-        # print(f"[DEBUG KOIRA] Ladattu muistiin yhteensä {len(malli_histogrammit)} mallikuvaa polusta: {kansio_polku}")
-
-        if len(malli_histogrammit) == 0:
+        if len(model_histograms) == 0:
             return False
 
-        for i, tulos in enumerate(tulokset_yolo):
-            kuva = kuvakaappaukset[i]
+        for i, result in enumerate(yolo_results):
+            frame = screenshots[i]
             
-            for box in tulos.boxes:
+            for box in result.boxes:
                 if hasattr(box.cls, 'tolist'):
-                    luokat = box.cls.tolist()
-                    luokka_id = int(luokat[0]) if luokat else -1
+                    classes = box.cls.tolist()
+                    class_id = int(classes[0]) if classes else -1
                 elif hasattr(box.cls, 'item'):
-                    luokka_id = int(box.cls.item())
+                    class_id = int(box.cls.item())
                 else:
-                    luokka_id = int(box.cls)
+                    class_id = int(box.cls)
                 
-                # 16 = dog COCO-tietokannassa
-                if luokka_id == 16:
+                # 16 = dog in COCO dataset
+                if class_id == 16:
                     if hasattr(box.xyxy, 'tolist'):
                         coords = box.xyxy.tolist()[0] if isinstance(box.xyxy.tolist()[0], list) else box.xyxy.tolist()
                     else:
                         coords = box.xyxy
                     
                     x1, y1, x2, y2 = map(int, coords)
-                    
-                    elaimen_alue = kuva[y1:y2, x1:x2]
-                    if elaimen_alue.size == 0:
+                    animal_roi = frame[y1:y2, x1:x2]
+                    if animal_roi.size == 0:
                         continue
                         
-                    # Muutetaan BGR -> HSV
-                    video_hsv = cv2.cvtColor(elaimen_alue, cv2.COLOR_BGR2HSV)
+                    video_hsv = cv2.cvtColor(animal_roi, cv2.COLOR_BGR2HSV)
                     video_hist = cv2.calcHist([video_hsv], [0, 1], None, [50, 60], [0, 180, 0, 256])
                     cv2.normalize(video_hist, video_hist, 0, 1, cv2.NORM_MINMAX)
                     
-                    for m_hist in malli_histogrammit:
-                        osuma_tarkkuus = cv2.compareHist(m_hist, video_hist, cv2.HISTCMP_CORREL)
-                        
-                        # print(f"[DEBUG KOIRA] Turkki/Haalari-väriosuma: {osuma_tarkkuus:.2f}")
-                        
-                        # Kynnysarvo koiralle (0.25 sallii eri haalarit ja ihonmuutokset joustavasti)
-                        if osuma_tarkkuus > 0.25:
+                    for m_hist in model_histograms:
+                        match_score = cv2.compareHist(m_hist, video_hist, cv2.HISTCMP_CORREL)
+                        if match_score > 0.25:
                             return True
         return False
     except Exception as e:
-        log_service.virhe_logi(f"Virhe oman koiran tunnistamisessa: {e}", "error_log.txt")
+        log_service.log_error(f"Error checking own dog: {e}")
         return None
 
-def onko_oma_auto(kuvakaappaukset, tulokset_yolo):
+def is_own_car(screenshots, yolo_results):
+    """
+    Compares the detected vehicle's color histogram with template images of the own car.
+    Supports Infrared (Night) mode using aspect ratio.
+    """
     try:
-        nykyinen_skripti_polku = os.path.dirname(os.path.abspath(__file__))
-        kansion_polku = os.path.join(nykyinen_skripti_polku, "images", "auto")
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        folder_path = os.path.join(script_dir, "images", "auto")
         
-        malli_histogrammit = []
-        if os.path.exists(kansion_polku):
-            for tiedosto in os.listdir(kansion_polku):
-                if tiedosto.endswith(('.jpg', '.jpeg', '.png')):
-                    polku = os.path.join(kansion_polku, tiedosto)
-                    m_kuva = cv2.imread(polku)
+        model_histograms = []
+        if os.path.exists(folder_path):
+            for file in os.listdir(folder_path):
+                if file.endswith(('.jpg', '.jpeg', '.png')):
+                    path = os.path.join(folder_path, file)
+                    img = cv2.imread(path)
                     
-                    if m_kuva is not None:
-                        # Mallikuva muutetaan BGR -> HSV
-                        m_hsv = cv2.cvtColor(m_kuva, cv2.COLOR_BGR2HSV)
-                        # Lasketaan 2D-histogrammi: Kanavat 0 (Sävy) ja 1 (Kylläisyys)
-                        hist = cv2.calcHist([m_hsv], [0, 1], None, [50, 60], [0, 180, 0, 256])
-                        # Normalisoidaan histogrammi, jotta vertailu on vakaa
+                    if img is not None:
+                        hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+                        hist = cv2.calcHist([hsv_img], [0, 1], None, [50, 60], [0, 180, 0, 256])
                         cv2.normalize(hist, hist, 0, 1, cv2.NORM_MINMAX)
-                        malli_histogrammit.append(hist)
+                        model_histograms.append(hist)
 
-        # print(f"[DEBUG AUTO] Ladattu muistiin yhteensä {len(malli_histogrammit)} mallikuvaa polusta: {kansion_polku}")
-
-        if len(malli_histogrammit) == 0:
+        if len(model_histograms) == 0:
             return False
 
-        for i, tulos in enumerate(tulokset_yolo):
-            kuva = kuvakaappaukset[i]
+        for i, result in enumerate(yolo_results):
+            frame = screenshots[i]
             
-            for box in tulos.boxes:
+            for box in result.boxes:
                 if hasattr(box.cls, 'tolist'):
-                    luokat = box.cls.tolist()
-                    luokka_id = int(luokat[0]) if luokat else -1
+                    classes = box.cls.tolist()
+                    class_id = int(classes[0]) if classes else -1
                 elif hasattr(box.cls, 'item'):
-                    luokka_id = int(box.cls.item())
+                    class_id = int(box.cls.item())
                 else:
-                    luokka_id = int(box.cls)
+                    class_id = int(box.cls)
                 
                 # 2 = car, 7 = truck
-                if luokka_id == 2 or luokka_id == 7:
+                if class_id in [2, 7]:
                     if hasattr(box.xyxy, 'tolist'):
                         coords = box.xyxy.tolist()[0] if isinstance(box.xyxy.tolist()[0], list) else box.xyxy.tolist()
                     else:
                         coords = box.xyxy
                     
                     x1, y1, x2, y2 = map(int, coords)
-                    leveys = x2 - x1
-                    korkeus = y2 - y1
+                    width = x2 - x1
+                    height = y2 - y1
                     
-                    if korkeus > 0:
-                        suhdeluku = leveys / korkeus
-                    else:
-                        suhdeluku = 0
+                    aspect_ratio = width / height if height > 0 else 0
 
-                    auton_alue = kuva[y1:y2, x1:x2]
-                    if auton_alue.size == 0:
+                    car_roi = frame[y1:y2, x1:x2]
+                    if car_roi.size == 0:
                         continue
                         
-                    # SYNKRONOINTI: Muutetaan videon kuva BGR -> HSV!
-                    video_hsv = cv2.cvtColor(auton_alue, cv2.COLOR_BGR2HSV)
+                    video_hsv = cv2.cvtColor(car_roi, cv2.COLOR_BGR2HSV)
                     
-                    # TUNNISTETAAN ONKO KYSEESSÄ MUSTAVALKOKUVA (YÖLLINEN INFRA PUNAMUOTO)
-                    # Haetaan Saturation (kylläisyys) -kanava (indeksi 1) ja lasketaan sen keskiarvo
-                    s_kanava = video_hsv[:, :, 1]
-                    kyllaisyys_keskiarvo = cv2.mean(s_kanava)[0]
+                    # NIGHT MODE DETECTION (Infrared)
+                    s_channel = video_hsv[:, :, 1]
+                    saturation_mean = cv2.mean(s_channel)[0]
                     
-                    # Jos värejä on erittäin vähän (alle 8.0), kamera on yö/IR-moodissa
-                    onko_yomuoto = kyllaisyys_keskiarvo < 8.0
+                    is_night_mode = saturation_mean < 8.0
                     
-                    if onko_yomuoto:
-                        # print(f"[DEBUG AUTO] YÖMOODI HAVAITTU (Kylläisyys-ka: {kyllaisyys_keskiarvo:.2f})")
-                        # Yöllä luotetaan pelkkään pitkänomaiseen muotoon (suhdeluku), koska väriä ei voida verrata
-                        if suhdeluku > 1.2:
-                            #print(f"[DEBUG AUTO] Yöajoneuvon muoto ({suhdeluku:.2f}) täsmää farmariin, hyväksytään omaksi!")
+                    if is_night_mode:
+                        if aspect_ratio > 1.2:
                             return True
                     else:
-                        # PÄIVÄMOODI: Ajetaan värihistogrammilaskenta normaalisti
+                        # DAY MODE: Run normal color histogram matching
                         video_hist = cv2.calcHist([video_hsv], [0, 1], None, [50, 60], [0, 180, 0, 256])
                         cv2.normalize(video_hist, video_hist, 0, 1, cv2.NORM_MINMAX)
                         
-                        for m_hist in malli_histogrammit:
-                            osuma_tarkkuus = cv2.compareHist(m_hist, video_hist, cv2.HISTCMP_CORREL)
-                            
-                            #print(f"[DEBUG AUTO] PÄIVÄ: Muoto: {suhdeluku:.2f}, Väriosuma: {osuma_tarkkuus:.2f}")
-                            
-                            if suhdeluku > 1.2 and osuma_tarkkuus > 0.45:
+                        for m_hist in model_histograms:
+                            match_score = cv2.compareHist(m_hist, video_hist, cv2.HISTCMP_CORREL)
+                            if aspect_ratio > 1.2 and match_score > 0.45:
                                 return True 
                             
         return False
     except Exception as e:
-        # print(f"[DEBUG AUTO] !!! KRIITTINEN VIRHE FUNKTION SISÄLLÄ !!!: {e}")
-        log_service.virhe_logi(f"Virhe oman auton tunnistamisessa: {e}", "error_log.txt")
+        log_service.log_error(f"Error checking own car: {e}")
         return None
 
-
-def onko_tuttu_henkilo(kuvakaappaukset):
+def is_known_person(screenshots):
+    """
+    Uses face_recognition to verify if a person matches known face images.
+    """
     try:
-        kansio_polku = "images/ihmiset"
-        mallikuvat = []
-        if os.path.exists(kansio_polku):
-            for tiedosto in os.listdir(kansio_polku):
-                if tiedosto.endswith((".jpg", ".JPEG", ".png")):
-                    mallikuvat.append(os.path.join(kansio_polku, tiedosto))
+        folder_path = "images/ihmiset"
+        template_images = []
+        if os.path.exists(folder_path):
+            for file in os.listdir(folder_path):
+                if file.endswith((".jpg", ".JPEG", ".png")):
+                    template_images.append(os.path.join(folder_path, file))
 
-        malli_encode = []
-        for mallikuva in mallikuvat:
-            mallikuva = face_recognition.load_image_file(mallikuva)
-            mallikuva_encode = face_recognition.face_encodings(mallikuva)
-            if len(mallikuva_encode) > 0:
-                malli_encode.append(mallikuva_encode[0])
+        known_encodings = []
+        for template in template_images:
+            img = face_recognition.load_image_file(template)
+            img_encodings = face_recognition.face_encodings(img)
+            if len(img_encodings) > 0:
+                known_encodings.append(img_encodings[0])
 
-        for kuva in kuvakaappaukset:
-            kuva_encofings = face_recognition.face_encodings(kuva)
-            for enco in kuva_encofings:
-                osumat = face_recognition.compare_faces(malli_encode, enco)
-                if True in osumat:
+        for frame in screenshots:
+            frame_encodings = face_recognition.face_encodings(frame)
+            for encoding in frame_encodings:
+                matches = face_recognition.compare_faces(known_encodings, encoding)
+                if True in matches:
                     return True
         return False
     except Exception as e:
-        log_service.virhe_logi(f"Virhe ihmisen tunnistamisessa: {e}", "error_log.txt")
+        log_service.log_error(f"Error recognizing person: {e}")
         return None

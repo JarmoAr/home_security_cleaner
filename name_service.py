@@ -1,13 +1,20 @@
 from datetime import datetime
-import log_service
 from zoneinfo import ZoneInfo
+import log_service  # Keep this import for now if log_service is still used
 
-def aikaleiman_muutos(aikaleima):
+def format_timestamp(timestamp):
+    """
+    Converts a millisecond timestamp into a readable string format (YYYYMMDD_HHMMSS).
+    """
     try:
-       aikaleima = int(aikaleima) / 1000
-       uusi_aikaleima = datetime.fromtimestamp(aikaleima).strftime('%Y%m%d_%H%M%S')
-       return uusi_aikaleima
+        # Convert milliseconds to seconds
+        timestamp_seconds = int(timestamp) / 1000
+        
+        # Format the timestamp into a readable date-time string
+        formatted_date = datetime.fromtimestamp(timestamp_seconds).strftime('%Y%m%d_%H%M%S')
+        return formatted_date
     
     except Exception as e:
-        log_service.virhe_logi(f"Virhe aikaleiman muunnossa: {e}", "error_log.txt")
+        # If you still use the old log_service:
+        log_service.virhe_logi(f"Error converting timestamp: {e}", "error_log.txt")
         return None

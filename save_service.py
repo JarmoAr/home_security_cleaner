@@ -1,47 +1,28 @@
 import os
-import base64
-import log_service
+import log_service  # Keep this import for now if log_service is still used
 
-# Videon dekoodaus
-def decode_video(video_data):
+def check_filename(filename: str, temp_path: str, archive_path: str) -> str:
+    """
+    Checks if a file with the same name already exists in temp or archive folders.
+    If it exists, appends a counter (e.g., filename(1).mp4) to prevent overwriting.
+    """
     try:
-        decoded_video = base64.urlsafe_b64decode(video_data['data'])
-        return decoded_video
-    except Exception as e:
-        log_service.virhe_logi(f"Virhe videon dekoodauksessa: {e}", "error_log.txt")
-        return None
-
-# tarkistetaan löytyykö saman nimienen tiedosto
-def tarkista_nimi(tiedostonnimi, temp_path, arkisto_path):
-    try:
-        polku_temp = os.path.join(temp_path, tiedostonnimi + ".mp4")
-        polku_arkisto = os.path.join(arkisto_path, tiedostonnimi + ".mp4")
-        niminumero = 1
-        lopullinen_nimi = tiedostonnimi + ".mp4"
+        temp_file_path = os.path.join(temp_path, filename + ".mp4")
+        archive_file_path = os.path.join(archive_path, filename + ".mp4")
+        name_counter = 1
+        final_name = filename + ".mp4"
 
         while True:
-            if os.path.exists(polku_temp) or os.path.exists(polku_arkisto):
-                lopullinen_nimi = tiedostonnimi + "(" + str(niminumero) + ").mp4"
-                niminumero += 1
-                polku_temp = os.path.join(temp_path, lopullinen_nimi)
-                polku_arkisto = os.path.join(arkisto_path, lopullinen_nimi)
+            if os.path.exists(temp_file_path) or os.path.exists(archive_file_path):
+                final_name = f"{filename}({name_counter}).mp4"
+                name_counter += 1
+                temp_file_path = os.path.join(temp_path, final_name)
+                archive_file_path = os.path.join(archive_path, final_name)
             else:
                 break
         
-        return lopullinen_nimi
+        return final_name
 
     except Exception as e:
-        log_service.virhe_logi(f"Virhe tiedoston nimen tarkistuksessa: {e}", "error_log.txt")
-        return None
-
-# Tallenna video temp-kansioon , nimen tarkistamiseen tarvitaan temp ja arkisto kansioiden polut
-def tallenna_video(decoded_video, tiedostonnimi, temp_path, arkisto_path):
-    try:
-        lopullinen_nimi = tarkista_nimi(tiedostonnimi, temp_path, arkisto_path)
-        polku_temp = os.path.join(temp_path, lopullinen_nimi)
-        with open(polku_temp, "wb") as f:
-            f.write(decoded_video)
-        return polku_temp
-    
-    except Exception as e:
-        return None
+        log_service.virhe_logi(f"Error checking filename duplicate: {e}", "error_log.txt")
+        return filename + ".mp4"  # Return default as fallback

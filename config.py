@@ -1,36 +1,39 @@
 from pathlib import Path
+import log_service
 
-# Peruskansio
+# Base directory (Peruskansio käyttäjän kotihakemistossa)
 BASE_DIR = Path.home() / "valvontakamera"
 
-# Pääkansiot
+# Core directories (Pääkansiot)
+WATCH_PATH = BASE_DIR / "incoming_videos"  # NEW: The folder where the camera drops new files
 TEMP_PATH = BASE_DIR / "temp"
-ARKISTO_PATH = BASE_DIR / "arkisto"
+ARCHIVE_PATH = BASE_DIR / "arkisto"        # Matches the updated archive naming
 DELETE_PATH = BASE_DIR / "delete_temp"
 
-# Sample_service.py:n kansio
+# Service directories (Muut kansiot)
 SAMPLE_PATH = BASE_DIR / "sample"
-
-# Katso_havainnot.py:n tarkistettavien videoiden kansio
 AI_RESULTS_PATH = BASE_DIR / "ai_results"
 
-# Kaikki kansiot yhdessä listana
+# Combined list of all directories to create
 ALL_PATHS = [
+    WATCH_PATH,
     TEMP_PATH,
-    ARKISTO_PATH,
+    ARCHIVE_PATH,
     DELETE_PATH,
     SAMPLE_PATH,
     AI_RESULTS_PATH,
 ]
 
-# Kansioiden luonti/varmistus
-def luo_kansiot():
+def create_directories() -> bool:
+    """
+    Ensures all required project directories exist on the system.
+    Creates them if they are missing.
+    """
     try:
         for path in ALL_PATHS:
             path.mkdir(parents=True, exist_ok=True)
-        print("[INFO] Kaikki tarvittavat kansiot on luotu tai ne olivat jo olemassa.")
+        print("[INFO] All required directories verified/created successfully.")
         return True
     except Exception as e:
-        log_service.virhe_logi(f"Virhe luo_kansiot() funktiossa: {e}", "error_log.txt")
-        return None
-
+        log_service.log_error(f"Error in create_directories(): {e}")
+        return False

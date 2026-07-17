@@ -5,124 +5,129 @@ import vision_service
 import log_service
 from config import SAMPLE_PATH
 
-def poimi_uusi_nayte(video_polku, kohde_luokka, tallennus_kansio, tiedosto_alku):
+def extract_new_sample(video_path: str, target_class: str, save_folder: str, file_prefix: str) -> bool:
+    """
+    Scans a video for a specific target class using YOLOv8.
+    Crops the detected object and saves it as a new template image.
+    If target is a person, it requires a visible face using face_recognition.
+    """
     try:
-        # 1. Varmistetaan, että kohdekansio on fyysisesti olemassa
-        os.makedirs(tallennus_kansio, exist_ok=True)
+        # 1. Ensure the destination folder exists
+        os.makedirs(save_folder, exist_ok=True)
         
-        # 2. Haetaan kuvakaappaukset videosta
-        print(f"[SAMPLE] Avataan video näytteenottoa varten: {video_polku}")
-        kuvat = vision_service.ota_kuvakaappaukset(video_polku)
-        if not kuvat:
-            print("[SAMPLE] Videota ei voitu avata tai se on tyhjä.")
+        # 2. Capture screenshots from the video using the updated vision_service
+        print(f"[SAMPLE] Opening video for sampling: {video_path}")
+        frames = vision_service.capture_screenshots(video_path)
+        if not frames:
+            print("[SAMPLE] Video could not be opened or is empty.")
             return False
 
-        # 3. Ladataan YOLO-malli
-        malli = YOLO("yolov8n.pt")
+        # 3. Load YOLO model
+        model = YOLO("yolov8n.pt")
         
-        # 4. Katsotaan kansiosta seuraava vapaa numero
-        if os.path.exists(tallennus_kansio):
-            olemassa_olevat = [f for f in os.listdir(tallennus_kansio) if f.startswith(tiedosto_alku) and f.endswith('.jpg')]
-            seuraava_numero = len(olemassa_olevat) + 1
+        # 4. Find the next available increment number in the folder
+        if os.path.exists(save_folder):
+            existing_files = [f for f in os.listdir(save_folder) if f.startswith(file_prefix) and f.endswith('.jpg')]
+            next_number = len(existing_files) + 1
         else:
-            seuraava_numero = 1
+            next_number = 1
         
-        print(f"[SAMPLE] Etsitään kohdetta '{kohde_luokka}'. Kansiossa on jo {seuraava_numero-1} kuvaa. Seuraava vapaa numero: {seuraava_numero}")
+        print(f"[SAMPLE] Searching for target '{target_class}'. Folder already contains {next_number-1} images. Next free number: {next_number}")
         
-        # 5. Etsitään videolta kohde
-        for kuva in kuvat:
-            tulokset = malli.predict(source=kuva, verbose=False)
+        # 5. Search for the object in the captured frames
+        for frame in frames:
+            results = model.predict(source=frame, verbose=False)
             
-            if tulokset:
-                tulos = tulokset[0] # Otetaan listan ensimmäinen tulosolio
+            if results:
+                result = results[0]  # Take the first result object
                 
-                for box in tulos.boxes:
-                    # KORJAUS 1: Käytetään .item()[0] tai .int().item() purkamaan tensori numeroksi!
-                    luokka_id = int(box.cls[0].item())
-                    nimi = malli.names[luokka_id]
+                for box in result.boxes:
+                    # Extract class ID from tensor
+                    class_id = int(box.cls[0].item())
+                    name = model.names[class_id]
                     
-                    if nimi == kohde_luokka:
-                        koordinaatit = box.xyxy.tolist()[0] if isinstance(box.xyxy.tolist(), list) else box.xyxy.tolist()
-                        x1, y1, x2, y2 = map(int, koordinaatit)
+                    if name == target_class:
+                        coordinates = box.xyxy.tolist()[0] if isinstance(box.xyxy.tolist(), list) else box.xyxy.tolist()
+                        x1, y1, x2, y2 = map(int, coordinates)
                         
-                        # 1. Luodaan leikkaus ENSIN, jotta se on olemassa!
-                        leikkaus = kuva[y1:y2, x1:x2]
+                        # Crop the object region from the frame
+                        cropped_img = frame[y1:y2, x1:x2]
                         
-                        if leikkaus.size > 0:
-                            # 2. Jos etsitään ihmistä (person), vaaditaan että siitä löytyy myös aitoja kasvoja!
-                            if kohde_luokka == 'person':
+                        if cropped_img.size > 0:
+                            # If searching for a person, require face verification
+                            if target_class == 'person':
                                 import face_recognition
-                                # Muutetaan kuva RGB-muotoon face_recognitionia varten
-                                leikkaus_rgb = cv2.cvtColor(leikkaus, cv2.COLOR_BGR2RGB)
-                                kasvot = face_recognition.face_encodings(leikkaus_rgb)
+                                # Convert BGR to RGB for face_recognition
+                                cropped_rgb = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2RGB)
+                                faces = face_recognition.face_encodings(cropped_rgb)
                                 
-                                if len(kasvot) == 0:
-                                    print("[SAMPLE] Ihminen löytyi, mutta kasvot eivät näy. Etsitään parempaa kohtaa videolta...")
-                                    continue # Hypätään tämän yli ja etsitään parempi kuvakulma videolta!
+                                if len(faces) == 0:
+                                    print("[SAMPLE] Person found, but face is not visible. Searching for a better angle...")
+                                    continue  # Skip and look for a frame where the face is clear
 
-                            # 3. Jos kasvot löytyivät (tai kyseessä on jokin muu kohde kuten auto/koira), tallennetaan kuva!
-                            uusi_nimi = f"{tiedosto_alku}{seuraava_numero}.jpg"
-                            lopullinen_polku = os.path.join(tallennus_kansio, uusi_nimi)
+                            # Save the image if requirements are met
+                            new_filename = f"{file_prefix}{next_number}.jpg"
+                            final_path = os.path.join(save_folder, new_filename)
                             
-                            cv2.imwrite(lopullinen_polku, leikkaus)
-                            print(f"[SAMPLE] ONNISTUI! Uusi näyte tallennettu: {lopullinen_polku}")
+                            cv2.imwrite(final_path, cropped_img)
+                            print(f"[SAMPLE] SUCCESS! New sample saved to: {final_path}")
                             return True
                         
-        print(f"[SAMPLE] Videolta ei löytynyt selkeää kohdetta '{kohde_luokka}'.")
+        print(f"[SAMPLE] Could not find a clear '{target_class}' in this video.")
         return False
 
     except Exception as e:
-        log_service.virhe_logi(f"Virhe näytteenotossa: {e}", "error_log.txt")
-        print(f"[SAMPLE] !!! Virhe: {e}")
-        return None
+        log_service.log_error(f"Error during sampling: {e}")
+        print(f"[SAMPLE] !!! Error: {e}")
+        return False
 
 
 # ==============================================================================
-# TÄMÄN VALIKON AVULLA VOIT AJAA TÄTÄ TYÖKALUA KÄSIN
+# INTERACTIVE CLI TOOL MENU
 # ==============================================================================
 if __name__ == "__main__":
-    sample_kansio = str(SAMPLE_PATH)
-    os.makedirs(sample_kansio, exist_ok=True)
+    sample_folder = str(SAMPLE_PATH)
+    os.makedirs(sample_folder, exist_ok=True)
     
-    # 1. Haetaan kaikki mp4-videot automaattisesti kansiosta
-    videot = [f for f in os.listdir(sample_kansio) if f.endswith(('.mp4', '.avi', '.mkv'))]
+    # 1. Fetch all mp4/avi/mkv videos from the sample directory
+    videos = [f for f in os.listdir(sample_folder) if f.endswith(('.mp4', '.avi', '.mkv'))]
     
-    if not videot:
-        print(f"\n[SAMPLE] Kansio '{sample_kansio}' on tyhjä. Laita sinne ensin valvontakameran videoita!")
+    if not videos:
+        print(f"\n[SAMPLE] The folder '{sample_folder}' is empty. Place some security videos there first!")
         exit()
         
-    print(f"\n--- TEKOÄLYN NÄYTEPANKKITYÖKALU ---")
-    print(f"Löydetty {len(videot)} videotiedostoa kansiosta {sample_kansio}.\n")
+    print(f"\n--- AI TEMPLATE SAMPLING TOOL ---")
+    print(f"Found {len(videos)} video file(s) in {sample_folder}.\n")
     
-    # 2. Käydään videot läpi järjestyksessä yksi kerrallaan
-    for i, videon_nimi in enumerate(videot):
-        tarkka_polku = os.path.join(sample_kansio, videon_nimi)
+    # 2. Iterate through videos one by one
+    for i, video_name in enumerate(videos):
+        full_video_path = os.path.join(sample_folder, video_name)
         print("="*60)
-        print(f"KÄSITELLÄÄN VIDEO {i+1}/{len(videot)}: {videon_nimi}")
+        print(f"PROCESSING VIDEO {i+1}/{len(videos)}: {video_name}")
         print("="*60)
         
-        print("Mitä kohdetta haluat opettaa tästä videosta?")
-        print("1 = Auto (car)")
-        print("2 = Sinä itse (person)")
-        print("3 = Koira (dog)")
-        print("0 = Hypää tämän videon yli")
-        print("x = Lopeta koko ohjelma")
+        print("What object would you like to train from this video?")
+        print("1 = Your Vehicle (car)")
+        print("2 = Yourself / Family member (person)")
+        print("3 = Your Dog (dog)")
+        print("0 = Skip this video")
+        print("x = Exit program")
         
-        valinta = input("Valitse toiminto (1-3, 0, x): ")
+        choice = input("Select an option (1-3, 0, x): ")
         
-        if valinta == "x" or valinta.lower() == "x":
-            print("Lopetetaan ohjelma.")
+        if choice.lower() == "x":
+            print("Exiting tool.")
             break
-        elif valinta == "0":
-            print(f"Hypätään videon {videon_nimi} yli...\n")
+        elif choice == "0":
+            print(f"Skipping video: {video_name}...\n")
             continue
-        elif valinta == "1":
-            poimi_uusi_nayte(tarkka_polku, "car", "images/auto", "oma_auto")
-        elif valinta == "2":
-            poimi_uusi_nayte(tarkka_polku, "person", "images/ihmiset", "tuttu_henkilo")
-        elif valinta == "3":
-            poimi_uusi_nayte(tarkka_polku, "dog", "images/koira", "oma_koira")
+        elif choice == "1":
+            extract_new_sample(full_video_path, "car", "images/auto", "own_car")
+        elif choice == "2":
+            extract_new_sample(full_video_path, "person", "images/ihmiset", "known_person")
+        elif choice == "3":
+            extract_new_sample(full_video_path, "dog", "images/koira", "own_dog")
         else:
-            print("Virheellinen valinta, hypätään videon yli.\n")
+            print("Invalid selection. Skipping video.\n")
             
-    print("\nKaikki videot käyty läpi. Työkalu suljetaan.")
+    print("\nAll videos processed. Sampling tool closed.")
