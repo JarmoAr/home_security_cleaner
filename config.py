@@ -2,7 +2,7 @@ from pathlib import Path
 import log_service
 
 # Base directory (Peruskansio käyttäjän kotihakemistossa)
-BASE_DIR = Path.home() / "valvontakamera"
+BASE_DIR = Path.home() / "security_camera_data"
 
 # Core directories (Pääkansiot)
 WATCH_PATH = BASE_DIR / "incoming_videos"  # NEW: The folder where the camera drops new files
