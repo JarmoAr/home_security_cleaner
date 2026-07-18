@@ -7,11 +7,11 @@ BASE_DIR = Path.home() / "valvontakamera"
 # Core directories (Pääkansiot)
 WATCH_PATH = BASE_DIR / "incoming_videos"  # NEW: The folder where the camera drops new files
 TEMP_PATH = BASE_DIR / "temp"
-ARCHIVE_PATH = BASE_DIR / "arkisto"        # Matches the updated archive naming
-DELETE_PATH = BASE_DIR / "delete_temp"
+ARCHIVE_PATH = BASE_DIR / "archive"        # Matches the updated archive naming
+DELETE_PATH = BASE_DIR / "trash"
 
 # Service directories (Muut kansiot)
-SAMPLE_PATH = BASE_DIR / "sample"
+SAMPLE_PATH = BASE_DIR / "samples"
 AI_RESULTS_PATH = BASE_DIR / "ai_results"
 
 # Combined list of all directories to create

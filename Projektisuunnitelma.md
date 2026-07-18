@@ -1,93 +1,77 @@
-# 🛡️ Älykäs Valvontakamerajärjestelmä & AI-Pururi (Batch Processing)
+# 🛡️ Smart Security Camera System & Real-Time AI Watcher
 
-Tämä sovellus automatisoi valvontakameroiden lähettämien videomeilien hallinnan, analysoinnin ja siivouksen. Järjestelmä vapauttaa dynaamisesti Gmail-tallennustilaa ja suodattaa konenäön (YOLOv8 & Histogrammit & Kasvojentunnistus) avulla pois videot, joissa esiintyy vain asukkaita tai omia ajoneuvoja/eläimiä.
-
----
-
-## 📋 1. Tavoite ja Logiikka
-*   Gmail-tilan vapautus: Sähköpostit ladataan eräajona ja siirretään lennosta Gmailin roskakoriin (Trash), jolloin pilvikapasiteetti vapautuu välittömästi.
-*   Dynaaminen kansiohallinta: Videot kulkevat prosessilinjan läpi D-asemalla: Gmail -> temp -> arkisto (jos kriittinen hälytys) tai delete_temp (30 päivän paikallinen roskakori).
-*   Monikerroksinen AI-suodatus: Luokitellaan kohteet älykkäästi. Vain vieraat tai tunnistamattomat kohteet aiheuttavat kriittisen hälytyksen ja videon pysyvän arkistoinnin.
+This application automates the management, AI analysis, and cleanup of security camera video files. The system continuously watches a local directory for incoming camera feeds, analyzes them in real-time using computer vision (YOLOv8, Color Histograms, and Face Recognition), and automatically filters out videos containing only known residents, vehicles, or family pets.
 
 ---
 
-## 🏗️ 2. Järjestelmän rakenne
-
-### Kansiot ja Sijainnit (D-asema)
-*   D:\valvontakamera\temp\ - Paikka, jonne uudet videot ladataan analyysiä varten.
-*   D:\valvontakamera\arkisto\ - Pysyvä paikka videoille, joissa on kriittinen hälytys (vieras auto/ihminen).
-*   D:\valvontakamera\delete_temp\ - Paikallinen roskakori turhille videoille (automaattinen 30 päivän säilytys).
-*   D:\valvontakamera\sample\ - Manuaalinen tai puoliautomaattinen kansio ongelmavideoiden dynaamiseen opettamiseen.
-
-### Tekoälyn mallikuvapankki (Projektikansio)
-*   ./images/auto/ - Oman auton referenssikuvakaappaukset dynaamista histogrammianalyysiä varten.
-*   ./images/ihmiset/ - Asukkaiden kasvokuvat (face_recognition).
-*   ./images/koira/ - Oman koiran (kiinanharjakoira) dynaaminen turkki- ja haalariväripankki.
-
-### Moduulit
-1. main.py: Ohjaa prosessia tehokkaana eräajona (Batch processing loop), hallitsee vikasietoisuutta (try-except-suojat) ja suorittaa dynaamisen reitityksen.
-
-2. gmail_service.py: Hallitsee Google API -tunnistautumista, token-virheiden käsittelyä, sähköpostien hakua, videoiden latausta ja viestien poistoa.
-
-3. vision_service.py: Suorittaa monikerroksisen konenäköanalyysin: YOLOv8-kohdetunnistus, 2D-värihistogrammivertailu (BGR2HSV) ja dynaaminen infrapuna-yömooditunnistus (Saturation-keskiarvon seuranta).
-
-4. cleaner_service.py: Suorittaa edellisen ajokerran virhelokin (error_log.txt) dynaamisen alustuksen aikaleimalla ja siivoaa yli 30 päivää vanhat videot paikallisesta roskakorista.
-
-5. name_service.py: Muuntaa sähköpostin sisäiset aikaleimat standardeiksi suomalaisiksi tiedostonimiksi.
-
-6. save_service.py: Dekoodaa Base64-videodatan ja tallentaa sen kiintolevylle varmistaen, etteivät olemassa olevat tiedostot ylikirjoitu (automaattinen numerointi).
-
-7. sample_service.py: Erillinen puoliautomaattinen työkalu, joka etsii dynaamisesti sample-kansion videoista halutut kohteet (car/person/dog) ja leikkaa ne Tensor-muunnoksilla suoraan mallikuvapankkiin.
-
-8. log_service.py: Kirjoittaa keskitetyt virheet lokitiedostoihin.
-
+## 📋 1. Purpose and Logic
+*   **Real-Time Directory Watching:** The system continuously monitors an incoming directory for new `.mp4` video files. Once a file is stable (camera finishes writing), it is instantly processed.
+*   **Dynamic File Routing:** Videos pass through a secure local processing pipeline: `incoming_videos` -> `temp` -> `archive` (if a threat is detected) or `trash` (local trash bin with a 30-day retention policy).
+*   **Multilayered AI Filtering:** Detected objects are intelligently cross-referenced against local templates. Only unrecognized or suspicious entities trigger a critical alert and permanent archiving.
+*   **Power Outage Recovery:** Upon system startup, the system automatically checks the watch directory and processes any backlogged files sequentially from oldest to newest.
 
 ---
 
-## ⚙️ 3. Työnkulku (Detailed Workflow)
+## 🏗️ 2. System Architecture
 
-1. Järjestelmän alustus: Ohjelma tyhjentää edellisen ajokerran virhelokin ja leimaa uuden alun aikaleimalla. Paikallinen roskakori siivotaan vanhoista tiedostoista.
+### Directories and Locations (User Home / BASE_DIR)
+*   `~/security_camera/incoming_videos/` - The active directory where the security camera deposits new `.mp4` files.
+*   `~/security_camera/temp/` - A secure temporary directory where files are moved for isolated AI analysis.
+*   `~/security_camera/archive/` - Permanent storage for verified alerts (unrecognized persons or vehicles).
+*   `~/security_camera/trash/` - Local trash bin for safe videos (automatically deleted after 30 days).
+*   `~/security_camera/samples/` - A dedicated directory for manual or semi-automatic template training.
+*   `~/security_camera/ai_results/` - Target folder for the manual analysis utility.
 
-2. Yhteys & Token-suoja: Ohjelma tarkistaa Google API -yhteyden. Jos token.json on vanhentunut tai viallinen, se heittää hallitun poikkeuksen ja antaa suomenkieliset korjausohjeet.
+### AI Template Databank (Project Repository)
+*   `./images/auto/` - Reference images of authorized vehicles for dynamic 2D HSV color histogram matching.
+*   `./images/ihmiset/` - Clear facial profile photos of residents for `face_recognition`.
+*   `./images/koira/` - Color and coat templates of the family dog for flexible HSV matching thresholds.
 
-3. Eräajon haku: Ohjelma lataa viestit muistiin dynaamisella otsikkohaulla ja prosessoi ne halutussa eräkoossa (esim. 10 viestiä kerralla) säästääkseen API-kyselyrajoja (Rate Limiting).
+### Python Modules
+1.  `main.py`: The core application engine. Runs a continuous polling loop, manages file stability checks, handles exceptions gracefully, and orchestrates the video processing pipeline.
+2.  `vision_service.py`: Executes multilayered computer vision analysis: YOLOv8 object detection, normalized 2D HSV color histogram correlation, and dynamic infrared/night-mode detection based on grayscale saturation mean values.
+3.  `save_service.py`: Manages file metadata and ensures safe writing by automatically appending counters (e.g., `video(1).mp4`) to prevent filename overwriting.
+4.  `cleaner_service.py`: Performs automatic retention maintenance by permanently purging files older than 30 days from the local trash folder.
+5.  `name_service.py`: Converts raw millisecond timestamps into standardized, readable filename stamps (`YYYYMMDD_HHMMSS`).
+6.  `log_service.py`: Implements a centralized, automated daily logging framework using `TimedRotatingFileHandler`. It automatically rotates logs at midnight and maintains a clean rolling 7-day backup window.
+7.  `config.py`: Centralizes system environment configurations, path resolutions using `pathlib.Path`, and handles automatic initialization of missing core directories at boot.
+8.  `sample_service.py`: An interactive CLI training utility that scans videos for specific targets, crops them via bounding boxes, and automatically populates the template image databank.
+9.  `analyze_results.py`: An independent manual analysis tool used to inspect mystery videos, draw colored tracking boxes (`cv2.rectangle`), and bake visual AI classification labels directly onto video frames.
 
-4. Lataus & Vapautus: Video ladataan temp-kansioon ja sähköposti siirretään heti Gmailin roskakoriin tilan vapauttamiseksi.
+---
 
-5. Dynaaminen AI-Analyysi:
-    1. YOLOv8 tunnistaa objektit (auto, ihminen, eläin).
-    
-    2. Päivämoodi: Jos kuvassa on värejä, auton ja koiran tunnistus käyttää normalisoitua 2D-korrelaatiohistogrammia (värisävy + kylläisyys). Ihmiset tunnistetaan kasvojen piirteistä.
-    
-    3. Yömoodi (Infrapuna): Jos tekoäly laskee kuvan värikylläisyyden keskiarvoksi lähellä nollaa, järjestelmä vaihtaa lennosta taktiikkaa ja hyväksyy oman auton puhtaasti farmari-suhdeluvun (leveys/korkeus) perusteella.
+## ⚙️ 3. Detailed Workflow
 
-6. Tiedostoreititys: Jos videolta löytyy "vieras_ihminen" tai "vieras_auto", video lukitaan arkistoon. Jos kohteet ovat tuttuja, video lentää delete_temp-kansioon odottamaan automaattista tuhoa.
+1.  **System Boot & Log Initialization:** The application verifies all core folders. The rolling logging service is spawned, and the local storage cleanup script sweeps away expired videos from the trash bin.
+2.  **Live Directory Polling:** The system continuously monitors the watch folder. When a file is found, the system tracks its byte size over a 100ms delta to guarantee the camera has finished saving it.
+3.  **Isolation & Processing Stage:** The target video is moved into the `temp` sandbox to isolate the disk I/O and prevent the watcher loop from stalling.
+4.  **Multilayered AI Analysis:**
+    *   **YOLOv8 Inference:** The network detects primary targets (`person`, `car`, `truck`, `dog`).
+    *   **Day Mode Verification:** If colors are present, vehicles and pets are validated using normalized 2D color histograms. Persons are passed into the deep face-matching engine.
+    *   **Night Mode (Infrared):** If the image saturation falls below `8.0` (indicating an active IR illuminator), the color logic is bypassed. Vehicles are automatically verified using a customized wagon aspect-ratio threshold (width/height ratio > 1.2).
+5.  **Smart Routing Execution:** If an entity resolves as `"unknown_person"`, `"unknown_car"`, or `"unknown_animal"`, a critical alert triggers, and the file is locked in the permanent archive. Otherwise, the video is safely routed to the trash folder.
 
 ---
 
-## 🛠️ 4. Tekniset vaatimukset
-*   **Kirjastot:** `google-api-python-client`, `google-auth-oauthlib`, `opencv-python`, `face_recognition`, `ultralytics` (YOLOv8), `numpy`, `shutil`.
-*   **Yhteensopivuus:** Kehitetty ja testattu tuotantovalmiiksi Windows-ympäristössä (D-aseman kansiorakenne). Automaattinen testausympäristö (CI) on yhteensopiva Linux-pohjaisen GitHub Actions -pilviajon kanssa.
+## 🛠️ 4. Technical Specifications
+*   **Core Libraries:** `ultralytics` (YOLOv8), `opencv-python` (OpenCV), `face_recognition`, `numpy`, `pytest`, `shutil`.
+*   **Environment Compatibility:** Cross-platform layout built using Python's `pathlib`. Developed locally in Windows environments and natively supported in headless Linux cloud architectures.
 
 ---
 
-## 🧪 5. Testaus ja Laadunvarmistus (CI/CD)
-1. Järjestelmälle on rakennettu kattava automaattinen regressiontestaus Robot Framework -työkalulla.
+## 🧪 5. Automated Quality Assurance (CI/CD)
 
-2. Testit ajetaan eristetyssä GitHub Actions -pilviympäristössä (CI) aina, kun koodia pusketaan Gittiin.
+The project relies on a native **Pytest** architecture for microservice integration testing and regression tracking, deprecating legacy end-to-end framework layers.
 
-3. Pilviajoa ja OpenCV/YOLO-riippuvuuksia varten järjestelmä käyttää älykästä suojamuuria (testiapuri.py), joka eristää Tensor- ja histogrammilaskennat testiajon ajaksi ilman, että aitoa tuotantokoodia tarvitsee muuttaa.
+1.  **Continuous Integration:** GitHub Actions automatically intercepts every code push via `.github/workflows/tests.yml`.
+2.  **Isolated Virtual Runs:** Cloud workflows spin up isolated Python execution runners, install exact library frames from `requirements.txt`, and fire the testing suite.
+3.  **Mock Environment Security:** Unit test scenarios use Pytest's native `tmp_path` fixtures to construct temporary system directories, ensuring zero interference with real production camera logs or disk directories.
 
-## Testausmoduulit (30 testitapausta):
-1.  `save_service_tests.robot`: Varmistaa Base64-dekoodauksen ja automaattisen tiedostojen numeroinnin.
-2.  `gmail_service_test.robot`: Testaa API-rajapinnat ja suojatut viestien haut.
-3.  `vision_service_test.robot`: Testaa kasvojentunnistuksen ja kohteiden tunnistamisen suojatut rajapinnat (Run Keyword And Ignore Error).
-4.  `name_service_test.robot`: Testaa nimen koostamista tallennettavalle tiedostolle.
-5.  `cleaner_service_test.robot`: Testaa dynaamisten lokitiedostojen luonnin, alustuksen sekä vanhojen videoiden automaattisen poiston aikaleimapakotuksilla (Set Modified Time).
-6.  `log_service_test.robot`: Testaa tarvittavan logituksen(log_service.py).
+### Active Unit Test Coverage (`test_helpers.py`):
+*   `test_format_timestamp_success`: Validates millisecond transformations to standard filename formats.
+*   `test_format_timestamp_invalid`: Ensures mathematical and input errors are isolated gracefully without crashing.
+*   `test_check_filename_no_duplicate`: Confirms pristine filenames are retained when target files do not clash.
+*   `test_check_filename_with_duplicate`: Verifies auto-increment counters trigger correctly when duplicate files exist.
 
 ---
-*Dokumentti päivitetty: 12.6.2026 - Päivitetty eräajot, YOLOv8-logiikka, infrapuna-yömoodi, sample_service-oppimispalvelu sekä dynaamiset virheloki-alustukset.*
-
-
-
+*Document updated: July 18, 2026 - Deprecated Gmail eräajot / Base64 parsing. Documented continuous directory watcher, Pytest CI infrastructure, automated midnight log rotation, and full English refactor.*
