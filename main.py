@@ -13,7 +13,7 @@ import cleaner_service
 from config import WATCH_PATH, TEMP_PATH, ARCHIVE_PATH, DELETE_PATH, create_directories
 
 # Configuration
-WATCH_DIRECTORY = "./incoming_videos"  # The directory where the camera drops new files
+WATCH_DIRECTORY = WATCH_PATH  # The directory where the camera drops new files
 CHECK_INTERVAL_SECONDS = 2  # How often to scan the folder
 
 def main():
