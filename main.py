@@ -95,23 +95,37 @@ def main():
 
     try:
         while True:
-            # Scan the directory for all .mp4 files
-            video_files = list(watch_path.glob("*.mp4"))
+            # Fetch a fresh list of all .mp4 and .MP4 files
+            video_files = list(watch_path.glob("*.mp4")) + list(watch_path.glob("*.MP4"))
             
             if video_files:
-                # Process only the first file in the list for this cycle
+                # Sort files by modification time (oldest first for power outage recovery)
+                video_files.sort(key=lambda x: x.stat().st_mtime)
+                
+                # Select the first (oldest) video file from the queue
                 file_path = video_files[0]
                 
-                # Check the file size to see if it is still being written
-                initial_size = file_path.stat().st_size
-                time.sleep(0.5)
-                
-                # If the file size is stable, the camera has finished writing
-                if file_path.stat().st_size == initial_size and initial_size > 0:
-                    # Process the video and immediately loop back to refresh the list
-                    process_video(file_path, temp_path, archive_path, delete_path)
+                try:
+                    if file_path.exists():
+                        # Verify file stability
+                        initial_size = file_path.stat().st_size
+                        time.sleep(0.5)  # Half a second is enough to ensure the camera stopped writing
+                        
+                        if file_path.exists() and file_path.stat().st_size == initial_size and initial_size > 0:
+                            # File is ready! Process it.
+                            # Once process_video moves the file, the directory list will update.
+                            process_video(file_path, temp_path, archive_path, delete_path)
+                            
+                            # IMPORTANT: Jump immediately back to the start of the while loop to get a FRESH list!
+                            # This processes any remaining power outage backlog sequentially.
+                            continue
+                except Exception as file_error:
+                    pass
+            else:
+                # If the directory is completely empty, print standard scan message
+                print(f"[SCAN] Directory empty. Watching: '{watch_path.resolve()}'")
             
-            # Wait before the next directory scan
+            # Wait 2 seconds before the next check (only if directory was empty or file was busy)
             time.sleep(CHECK_INTERVAL_SECONDS)
             
     except KeyboardInterrupt:
