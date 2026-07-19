@@ -226,3 +226,4 @@ log.html
 report.html
 images/
 kamera_env/
+.streamlit/secrets.toml

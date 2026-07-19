@@ -20,9 +20,10 @@ def check_password():
         """
         Callback function to validate credentials stored in session state.
         """
-        # CONFIGURATION: You can change the username and password here!
-        if st.session_state["username"] == "jarmo" and st.session_state["password"] == "KameraVahti2026!":
-            st.session_state["password_correct"] = True
+        # CONFIGURATION: Credentials are read securely from the local secrets.toml file
+        if (st.session_state["username"] == st.secrets["DASHBOARD_USERNAME"] and 
+            st.session_state["password"] == st.secrets["DASHBOARD_PASSWORD"]):
+
             del st.session_state["password"]  # Remove password from memory for security
             del st.session_state["username"]
         else:
