@@ -93,15 +93,18 @@ def main():
     # Ensure all required folders are created at startup
     create_directories() 
     
-    # Setup paths
+    # Initialize the daily rolling logging service (keeps last 7 days of logs)
+    log_service.initialize_logger(days_to_keep=7)
+    log_service.log_info("Application started and directory watcher is spinning up...")
+    
+    # Setup paths from config variables
     temp_path = str(TEMP_PATH)
     archive_path = str(ARCHIVE_PATH)
     delete_path = str(DELETE_PATH)
+    ai_results_path = str(AI_RESULTS_PATH)  # Added for visual AI debugging logs/images
     
-    # Automatic trash cleanup (runs once at startup)
-    print("[STARTUP] Running automatic trash maintenance...")
-    cleaner_service.siivoa_roskakori(delete_path, paivia_sailytetään=30)
-    cleaner_service.alusta_virheloki("error_log.txt")
+    # Automatic error log baseline cleanup
+    cleaner_service.initialize_error_log("error_log.txt")
 
     # Ensure the watch directory exists
     watch_path = Path(WATCH_DIRECTORY)
@@ -110,8 +113,29 @@ def main():
     print(f"[START] Directory watcher active on: '{watch_path.resolve()}'")
     print(f"[START] Scanning every {CHECK_INTERVAL_SECONDS} seconds. Press Ctrl+C to stop.")
 
+    # Initialize the date tracking variable for scheduled daily folder cleanups
+    last_cleanup_date = None
+
     try:
         while True:
+            current_time = datetime.now()
+            current_date = current_time.date()
+            
+            # --- SCHEDULED DAILY STORAGE MAINTENANCE ---
+            # If the maintenance has not been executed today, run it now at midnight rollover
+            if last_cleanup_date != current_date:
+                log_service.log_info("[MAINTENANCE] Running scheduled daily storage cleanup...")
+                
+                # Clean the local trash folder (30 days retention policy)
+                cleaner_service.cleanup_folder(delete_path, days_to_keep=30)
+                
+                # Clean the AI results visual debugging folder (7 days retention policy)
+                cleaner_service.cleanup_folder(ai_results_path, days_to_keep=7)
+                
+                # Lock the current date to prevent re-running until the next midnight
+                last_cleanup_date = current_date
+            
+            # --- CONTINUOUS DIRECTORY WATCHER ---
             # Fetch a fresh list of all .mp4 and .MP4 files
             video_files = list(watch_path.glob("*.mp4")) + list(watch_path.glob("*.MP4"))
             
@@ -119,28 +143,23 @@ def main():
                 # Sort files by modification time (oldest first for power outage recovery)
                 video_files.sort(key=lambda x: x.stat().st_mtime)
                 
-                # Select the first (oldest) video file from the queue
+                # Select the first (oldest) video file from the queue safely using brackets
                 file_path = video_files[0]
                 
                 try:
                     if file_path.exists():
-                        # Verify file stability
+                        # Verify file stability (ensures camera has stopped saving bytes)
                         initial_size = file_path.stat().st_size
-                        time.sleep(0.5)  # Half a second is enough to ensure the camera stopped writing
+                        time.sleep(0.5)
                         
                         if file_path.exists() and file_path.stat().st_size == initial_size and initial_size > 0:
-                            # File is ready! Process it.
-                            # Once process_video moves the file, the directory list will update.
+                            # File is ready! Process it and route it dynamically based on AI analytics
                             process_video(file_path, temp_path, archive_path, delete_path)
                             
                             # IMPORTANT: Jump immediately back to the start of the while loop to get a FRESH list!
-                            # This processes any remaining power outage backlog sequentially.
                             continue
                 except Exception as file_error:
                     pass
-            else:
-                # If the directory is completely empty, print standard scan message
-                print(f"[SCAN] Directory empty. Watching: '{watch_path.resolve()}'")
             
             # Wait 2 seconds before the next check (only if directory was empty or file was busy)
             time.sleep(CHECK_INTERVAL_SECONDS)
