@@ -7,7 +7,7 @@ from config import AI_RESULTS_PATH
 def analyze_video_individually(video_path: str, output_folder: str):
     """
     Analyzes a single video file, runs YOLO object detection, applies deep matching,
-    and draws colored bounding boxes around detected objects.
+    and draws colored bounding boxes around detected objects without performance deadlocks.
     """
     video_base_name = os.path.splitext(os.path.basename(video_path))[0]
     print("\n" + "="*60)
@@ -17,6 +17,10 @@ def analyze_video_individually(video_path: str, output_folder: str):
     # 1. Capture screenshots exactly like the main pipeline does
     frames = vision_service.capture_screenshots(video_path)
     print(f"Video split into {len(frames)} frames (every 2 seconds).")
+
+    if not frames:
+        print("[ERROR] Could not extract any valid frames from this video.")
+        return False
 
     # 2. Load YOLO model
     model = YOLO("yolov8n.pt")
@@ -29,8 +33,9 @@ def analyze_video_individually(video_path: str, output_folder: str):
     # 4. Loop through frames and analyze detections with timestamps
     for i, result in enumerate(results):
         timestamp_seconds = i * 2
-        # Create a copy of the frame to draw on
+        # Create a copy of the specific frame to draw on
         drawn_frame = frames[i].copy()
+        single_frame_list = [drawn_frame]  # Isolated frame for hyper-fast local AI verification
         has_drawn_objects = False
         
         if len(result.boxes) > 0:
@@ -56,37 +61,40 @@ def analyze_video_individually(video_path: str, output_folder: str):
                     coords = box.xyxy
                 x1, y1, x2, y2 = map(int, coords)
 
-                # AI deep validation and dynamic box drawing
+                # AI deep validation and dynamic box drawing (Fixed bracket validation)
                 if class_id in [2, 7] or name in ['car', 'truck']:
-                    if vision_service.is_own_car(frames, [result]):
+                    # OPTIMIZATION: Verify only against the active result object to prevent loops
+                    if vision_service.is_own_car(single_frame_list, [result]):
                         print(f"    └── 🟩 AI DECISION: Target is OWN VEHICLE")
-                        cv2.rectangle(drawn_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Green box for own car
+                        cv2.rectangle(drawn_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
                         cv2.putText(drawn_frame, f"Own Car {confidence*100:.0f}%", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
                     else:
                         print(f"    └── 🟥 AI DECISION: UNKNOWN VEHICLE!")
-                        cv2.rectangle(drawn_frame, (x1, y1), (x2, y2), (0, 0, 255), 2)  # Red box for stranger
+                        cv2.rectangle(drawn_frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
                         cv2.putText(drawn_frame, f"Stranger Car {confidence*100:.0f}%", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
                     has_drawn_objects = True
 
                 elif class_id == 0 or name == 'person':
-                    if vision_service.is_known_person(frames):
+                    # OPTIMIZATION: Pass only the single active frame instead of the entire video list
+                    if vision_service.is_known_person(single_frame_list):
                         print(f"    └── 🟩 AI DECISION: Target is KNOWN PERSON")
-                        cv2.rectangle(drawn_frame, (x1, y1), (x2, y2), (255, 255, 0), 2)  # Yellow box for family
+                        cv2.rectangle(drawn_frame, (x1, y1), (x2, y2), (255, 255, 0), 2)
                         cv2.putText(drawn_frame, f"Known Person {confidence*100:.0f}%", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 2)
                     else:
                         print(f"    └── 🟥 AI DECISION: UNKNOWN PERSON!")
-                        cv2.rectangle(drawn_frame, (x1, y1), (x2, y2), (0, 0, 255), 2)  # Red box for intruder
+                        cv2.rectangle(drawn_frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
                         cv2.putText(drawn_frame, f"INTRUDER {confidence*100:.0f}%", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
                     has_drawn_objects = True
 
                 elif class_id == 16 or name == 'dog':
-                    if vision_service.is_own_dog(frames, [result]):
+                    # OPTIMIZATION: Target validation restricted to current frame array
+                    if vision_service.is_own_dog(single_frame_list, [result]):
                         print(f"    └── 🟩 AI DECISION: Target is OWN DOG")
-                        cv2.rectangle(drawn_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Green box for own dog
+                        cv2.rectangle(drawn_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
                         cv2.putText(drawn_frame, f"Own Dog {confidence*100:.0f}%", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
                     else:
                         print(f"    └── 🟥 AI DECISION: UNKNOWN ANIMAL!")
-                        cv2.rectangle(drawn_frame, (x1, y1), (x2, y2), (0, 0, 255), 2)  # Red box for unknown animal
+                        cv2.rectangle(drawn_frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
                         cv2.putText(drawn_frame, f"Unknown Animal {confidence*100:.0f}%", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
                     has_drawn_objects = True
 
@@ -100,6 +108,7 @@ def analyze_video_individually(video_path: str, output_folder: str):
     if not any_detections:
         print("\n[INFO] YOLO did not find any targets in this video.")
     print("="*60 + "\n")
+    return True
 
 if __name__ == "__main__":
     results_folder = str(AI_RESULTS_PATH)
