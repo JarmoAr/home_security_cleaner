@@ -13,7 +13,7 @@ from config import ARCHIVE_PATH, AI_RESULTS_PATH
 st.set_page_config(page_title="Security AI Control Center", page_icon="🛡️", layout="wide")
 
 st.title("🛡️ Security Camera AI - Control Center")
-st.subheader("Review alerts, run visual debuggers, and manage training templates")
+st.subheader("Review alerts, run visual debuggers, and manage training templates without losing your video")
 
 # Resolve core paths
 archive_dir = str(ARCHIVE_PATH)
@@ -31,7 +31,7 @@ st.sidebar.header("📁 Navigation & Videos")
 view_mode = st.sidebar.radio("Go to section:", ["Review & Retrain AI", "View AI Model Templates"])
 
 # ==============================================================================
-# SECTION 1: REVIEW & RETRAIN AI (WITH VISUAL DEBUGGER)
+# SECTION 1: REVIEW & RETRAIN AI (WITH COPIED VIDEO LOCK)
 # ==============================================================================
 if view_mode == "Review & Retrain AI":
     if not videos:
@@ -50,21 +50,21 @@ if view_mode == "Review & Retrain AI":
             # --- VISUAL AI DEBUGGER SECTION ---
             st.markdown("---")
             st.markdown("### 🔍 Visual AI Debugger (`ai_results`)")
-            st.write("Run the offline analysis tool to extract and draw bounding boxes on detected objects.")
+            st.write("Run the offline analysis tool. This creates a COPY of the video so it stays in your archive list.")
             
             if st.button("🚀 Run Visual AI Debugger on this Video", use_container_width=True, type="primary"):
-                with st.spinner("Moving video to AI Results and rendering target frames..."):
+                with st.spinner("Creating copy for AI Results and rendering target frames..."):
                     try:
                         # Ensure target directory exists
                         os.makedirs(ai_results_dir, exist_ok=True)
                         target_debug_path = os.path.join(ai_results_dir, selected_video_name)
                         
-                        # Move the file from archive to ai_results so analyze_results.py can see it
-                        shutil.move(full_video_path, target_debug_path)
+                        # KORJAUS: Tehdään COPY eikä MOVE, jotta alkuperäinen video ei katoa mihinkään!
+                        shutil.copy(full_video_path, target_debug_path)
                         
                         # Run the analyzer module that bakes bounding boxes onto images
                         analyze_results.analyze_video_individually(target_debug_path, ai_results_dir)
-                        st.success("Analysis complete! Bounding box images generated inside `ai_results` directory.")
+                        st.success("Analysis complete! Bounding box images generated below.")
                         
                         # Instantly fetch and display the generated .jpg images on the webpage
                         generated_images = [f for f in os.listdir(ai_results_dir) if f.startswith(os.path.splitext(selected_video_name)[0]) and f.endswith(('.jpg', '.jpeg', '.png'))]
@@ -82,16 +82,19 @@ if view_mode == "Review & Retrain AI":
             
         with col2:
             st.markdown("### 🧠 AI Retraining Actions")
-            st.write("Extract new templates from this video to teach the AI what is family-safe:")
+            st.write("Extract multiple samples from this video sequentially. The video will stay active until dismissed.")
             
             # Action 1: Train Vehicle
             if st.button("🛞 Extract as 'Own Vehicle' (car)", use_container_width=True):
                 with st.spinner("Processing video frames for vehicle extraction..."):
                     if os.path.exists(full_video_path):
                         success = sample_service.extract_new_sample(full_video_path, "car", "images/auto", "own_car")
-                        st.success("Successfully updated vehicle templates!") if success else st.error("No clear vehicle found.")
+                        if success:
+                            st.success("✅ Vehicle template extracted! You can still train other objects from this video.")
+                        else:
+                            st.error("Could not find a clear vehicle in this video.")
                     else:
-                        st.error("Video file was moved by the debugger. Refresh the page.")
+                        st.error("Video file not found.")
                         
             st.divider()
 
@@ -100,9 +103,12 @@ if view_mode == "Review & Retrain AI":
                 with st.spinner("Scanning frames for clear facial profile..."):
                     if os.path.exists(full_video_path):
                         success = sample_service.extract_new_sample(full_video_path, "person", "images/ihmiset", "known_person")
-                        st.success("Successfully updated human facial templates!") if success else st.error("No clear face found.")
+                        if success:
+                            st.success("✅ Human facial template extracted! You can still train other objects from this video.")
+                        else:
+                            st.error("Could not find a clear face. The script automatically scanned all frames but found no facing profiles.")
                     else:
-                        st.error("Video file was moved by the debugger. Refresh the page.")
+                        st.error("Video file not found.")
                         
             st.divider()
 
@@ -111,28 +117,33 @@ if view_mode == "Review & Retrain AI":
                 with st.spinner("Extracting dog coat and color histograms..."):
                     if os.path.exists(full_video_path):
                         success = sample_service.extract_new_sample(full_video_path, "dog", "images/koira", "own_dog")
-                        st.success("Successfully updated dog templates!") if success else st.error("No clear dog found.")
+                        if success:
+                            st.success("✅ Dog template extracted! You can still train other objects from this video.")
+                        else:
+                            st.error("Could not find a clear dog in this video.")
                     else:
-                        st.error("Video file was moved by the debugger. Refresh the page.")
+                        st.error("Video file not found.")
 
             st.divider()
+            st.markdown("### 🔒 Final Action")
+            st.write("When you are completely done extracting all objects, click below to move the video out of the archive:")
             
-            # Action 4: Dismiss to Trash
-            if st.button("🗑️ Dismiss Video (Move to Trash)", use_container_width=True, type="secondary"):
+            # Action 4: Dismiss to Trash (TÄMÄ ON NYT AINOA JOKA SIIRTÄÄ TIEDOSTON POIS)
+            if st.button("🗑️ Done with Video (Move to Trash)", use_container_width=True, type="secondary"):
                 from config import DELETE_PATH
                 trash_target = os.path.join(str(DELETE_PATH), selected_video_name)
                 try:
                     if os.path.exists(full_video_path):
                         shutil.move(full_video_path, trash_target)
-                        st.warning("Moved to trash. Refreshing...")
+                        st.warning("Video successfully moved to trash. Refreshing queue...")
                         st.rerun()
                     else:
-                        st.error("Video was already moved by the debugger. Refresh the page.")
+                        st.error("Video file no longer exists in archive.")
                 except Exception as e:
                     st.error(f"Failed to move file: {e}")
 
 # ==============================================================================
-# SECTION 2: VIEW AI MODEL TEMPLATES (YOUR REFERENCE IMAGES)
+# SECTION 2: VIEW AI MODEL TEMPLATES
 # ==============================================================================
 elif view_mode == "View AI Model Templates":
     st.markdown("### 🖼️ Active AI Model Templates")
@@ -150,7 +161,6 @@ elif view_mode == "View AI Model Templates":
             template_files = [f for f in os.listdir(cat_path) if f.endswith(('.jpg', '.jpeg', '.png'))]
             
             if template_files:
-                # Display templates in a grid layout (4 images per row)
                 cols = st.columns(4)
                 for index, file_name in enumerate(template_files):
                     col_target = cols[index % 4]
