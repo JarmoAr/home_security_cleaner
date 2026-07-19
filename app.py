@@ -10,22 +10,23 @@ import analyze_results
 from config import ARCHIVE_PATH, AI_RESULTS_PATH
 
 # ==============================================================================
-# 🔑 LIGHTWEIGHT PASSWORD PROTECTION SYSTEM
+# 🔑 SECURE LOCAL PASSWORD PROTECTION SYSTEM
 # ==============================================================================
 def check_password():
     """
-    Verifies user credentials. Returns True if authentication succeeds.
+    Verifies user credentials securely against secrets.toml. 
+    Returns True if authentication succeeds.
     """
     def password_entered():
         """
-        Callback function to validate credentials stored in session state.
+        Callback function to validate credentials and force a page rerun upon success.
         """
-        # CONFIGURATION: Credentials are read securely from the local secrets.toml file
         if (st.session_state["username"] == st.secrets["DASHBOARD_USERNAME"] and 
             st.session_state["password"] == st.secrets["DASHBOARD_PASSWORD"]):
-
-            del st.session_state["password"]  # Remove password from memory for security
+            st.session_state["password_correct"] = True
+            del st.session_state["password"]  # Clean memory for security
             del st.session_state["username"]
+            st.rerun()  # FORCE RE-RENDER: This ensures the login page disappears instantly!
         else:
             st.session_state["password_correct"] = False
 
@@ -50,7 +51,9 @@ def check_password():
 
 # Enforce security baseline inspection before rendering any dashboard elements
 if not check_password():
-    st.stop()  # Terminate Streamlit execution flow immediately for unauthenticat
+    st.stop()  
+
+# ==============================================================================
 
 # 1. Page Configuration
 st.set_page_config(page_title="Security AI Control Center", page_icon="🛡️", layout="wide")
