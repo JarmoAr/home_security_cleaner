@@ -9,6 +9,48 @@ import sample_service
 import analyze_results
 from config import ARCHIVE_PATH, AI_RESULTS_PATH
 
+# ==============================================================================
+# 🔑 LIGHTWEIGHT PASSWORD PROTECTION SYSTEM
+# ==============================================================================
+def check_password():
+    """
+    Verifies user credentials. Returns True if authentication succeeds.
+    """
+    def password_entered():
+        """
+        Callback function to validate credentials stored in session state.
+        """
+        # CONFIGURATION: You can change the username and password here!
+        if st.session_state["username"] == "jarmo" and st.session_state["password"] == "KameraVahti2026!":
+            st.session_state["password_correct"] = True
+            del st.session_state["password"]  # Remove password from memory for security
+            del st.session_state["username"]
+        else:
+            st.session_state["password_correct"] = False
+
+    if "password_correct" not in st.session_state:
+        # First run: Draw clean login interface forms
+        st.title("🔐 Security AI Dashboard - Login Required")
+        st.text_input("Username", key="username")
+        st.text_input("Password", type="password", key="password")
+        st.button("Log In", on_click=password_entered)
+        return False
+    elif not st.session_state["password_correct"]:
+        # Authentication failed: Re-render input elements with error banner
+        st.title("🔐 Security AI Dashboard - Login Required")
+        st.text_input("Username", key="username")
+        st.text_input("Password", type="password", key="password")
+        st.button("Log In", on_click=password_entered)
+        st.error("❌ Invalid Username or Password. Please try again.")
+        return False
+    else:
+        # Authentication succeeded
+        return True
+
+# Enforce security baseline inspection before rendering any dashboard elements
+if not check_password():
+    st.stop()  # Terminate Streamlit execution flow immediately for unauthenticat
+
 # 1. Page Configuration
 st.set_page_config(page_title="Security AI Control Center", page_icon="🛡️", layout="wide")
 
