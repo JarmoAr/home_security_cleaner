@@ -10,19 +10,36 @@ import name_service
 import vision_service
 import cleaner_service
 # main.py tiedoston yläreunaan:
-from config import WATCH_PATH, TEMP_PATH, ARCHIVE_PATH, DELETE_PATH, create_directories
+from config import WATCH_PATH, TEMP_PATH, ARCHIVE_PATH, DELETE_PATH, AI_RESULTS_PATH, create_directories
 
 # Configuration
 WATCH_DIRECTORY = WATCH_PATH  # The directory where the camera drops new files
 CHECK_INTERVAL_SECONDS = 2  # How often to scan the folder
 
 def main():
-    # Luo tarvittavat kansiot (temp, arkisto jne.)
+    # Ensure all required folders are created at startup
     create_directories()  
     
-    # Käynnistetään uusi automaattisesti rullaava loki (säästetään 7 päivää)
+    # Initialize the automatic daily rolling log (keeps last 7 days)
     log_service.initialize_logger(days_to_keep=7)
-    log_service.log_info("Application started and folder watcher is active.")
+    log_service.log_info("Application started and directory watcher is spinning up...")
+    
+    # SETUP PATHS
+    temp_path = str(TEMP_PATH)
+    archive_path = str(ARCHIVE_PATH)
+    delete_path = str(DELETE_PATH)
+    ai_results_path = str(AI_RESULTS_PATH) # Uusi muuttuja
+    
+    # AUTOMATIC MAINTENANCE (Runs once at startup)
+    print("[STARTUP] Running automatic storage maintenance...")
+    
+    # 1. Siivotaan normaali roskakori (säilytys 30 päivää)
+    cleaner_service.cleanup_folder(delete_path, days_to_keep=30)
+    
+    # 2. Siivotaan AI-tarkistuskansio (säilytys esim. 7 päivää, jottei täyty turhaan!)
+    cleaner_service.cleanup_folder(ai_results_path, days_to_keep=7)
+    
+    cleaner_service.initialize_error_log("error_log.txt")
 
 def process_video(file_path: Path, temp_path: str, archive_path: str, delete_path: str):
     """

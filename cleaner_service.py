@@ -1,48 +1,57 @@
 import os
+from datetime import datetime
 import log_service
-from datetime import datetime, timedelta
 
-def siivoa_roskakori(roskakori_polku, paivia_sailytetään=30):
+def cleanup_folder(folder_path: str, days_to_keep: int = 30) -> bool:
+    """
+    Scans any specified directory and permanently deletes files older than the specified days.
+    """
     try:
-        # 1. Varmistetaan ensin, että kansio on edes olemassa
-        if not os.path.exists(roskakori_polku):
+        # 1. Ensure the directory exists
+        if not os.path.exists(folder_path):
             return True
             
-        # 2. Haetaan tämän hetkinen aika
-        nyt = datetime.now()
+        # 2. Get current time
+        now = datetime.now()
+        deleted_count = 0
         
-        # 3. Käydään läpi kaikki kansion tiedostot
-        for tiedoston_nimi in os.listdir(roskakori_polku):
-            full_path = os.path.join(roskakori_polku, tiedoston_nimi)
+        # 3. Iterate through all files in the directory
+        for filename in os.listdir(folder_path):
+            full_path = os.path.join(folder_path, filename)
             
-            # Varmistetaan, että kyseessä on tiedosto eikä alikansio
+            # Ensure it is a file and not a subdirectory
             if os.path.isfile(full_path):
-                # Haetaan tiedoston viimeisin muokkausaika kiintolevyllä
-                muokkausaika_timestamp = os.path.getmtime(full_path)
-                muokkausaika = datetime.fromtimestamp(muokkausaika_timestamp)
+                # Get the last modification time of the file
+                modification_time_ts = os.path.getmtime(full_path)
+                modification_time = datetime.fromtimestamp(modification_time_ts)
                 
-                # Lasketaan tiedoston ikä päivissä
-                ika = nyt - muokkausaika
+                # Calculate file age
+                file_age = now - modification_time
                 
-                # 4. Jos ikä on suurempi kuin sallittu määrä (esim. 30 päivää)
-                if ika.days >= paivia_sailytetään:
+                # 4. If the file is older than the allowed days, delete it
+                if file_age.days >= days_to_keep:
                     os.remove(full_path)
-                    print(f"Poistettu vanha video lopullisesti: {tiedoston_nimi}")
+                    deleted_count += 1
                     
+        if deleted_count > 0:
+            log_service.log_info(f"[CLEANER] Permanently removed {deleted_count} old file(s) from: {folder_path}")
         return True
     except Exception as e:
-        log_service.virhe_logi(f"Virhe roskakorin siivouksessa: {e}", "error_log.txt")
-        return None
+        log_service.log_error(f"Error during folder cleanup for {folder_path}: {e}")
+        return False
 
-def alusta_virheloki(virheloki_polku):
+def initialize_error_log(error_log_path: str) -> bool:
+    """
+    Initializes or clears the error log file at startup.
+    """
     try:
-        if os.path.exists(virheloki_polku):
-            with open(virheloki_polku, 'w', encoding='utf-8') as f:
-                f.write(f"Virheloki alustettu: {datetime.now()}\n")
+        if os.path.exists(error_log_path):
+            with open(error_log_path, 'w', encoding='utf-8') as f:
+                f.write(f"Error log initialized: {datetime.now()}\n")
         else:
-            with open(virheloki_polku, 'w', encoding='utf-8') as f:
-                f.write(f"Virheloki luotu: {datetime.now()}\n")
+            with open(error_log_path, 'w', encoding='utf-8') as f:
+                f.write(f"Error log created: {datetime.now()}\n")
         return True
     except Exception as e:
-        log_service.virhe_logi(f"Virhe virhelokin alustamisessa: {e}", "error_log.txt")
-        return None
+        print(f"[ERROR] Failed to initialize error log: {e}")
+        return False
