@@ -154,18 +154,24 @@ def main():
                 
                 try:
                     if file_path.exists():
-                        # Verify file stability (ensures camera has stopped saving bytes)
                         initial_size = file_path.stat().st_size
+                        
+                        # DEBUG PRINT: Katsotaan tiedoston perustiedot livenä
+                        print(f"[DEBUG-QUEUE] Checking file: {file_path.name} | Size: {initial_size} bytes")
+                        
                         time.sleep(0.5)
                         
                         if file_path.exists() and file_path.stat().st_size == initial_size and initial_size > 0:
                             # File is ready! Process it and route it dynamically based on AI analytics
+                            print(f"[DEBUG-QUEUE] File is stable. Sending to process_video...")
                             process_video(file_path, temp_path, archive_path, delete_path)
-                            
-                            # IMPORTANT: Jump immediately back to the start of the while loop to get a FRESH list!
                             continue
+                        else:
+                            print(f"[DEBUG-QUEUE] File skipped! Reason -> Stable size: {file_path.stat().st_size == initial_size}, Size > 0: {initial_size > 0}")
                 except Exception as file_error:
-                    pass
+                    # TÄRKEÄÄ: Tulostetaan aito virhe ruudulle hiljaisen pass-ohituksen sijaan!
+                    print(f"[DEBUG-ERROR] Failed to handle queue file: {file_error}")
+
             
             # Wait 2 seconds before the next check (only if directory was empty or file was busy)
             time.sleep(CHECK_INTERVAL_SECONDS)
