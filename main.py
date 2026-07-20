@@ -109,8 +109,8 @@ def main():
     # Automatic error log baseline cleanup
     cleaner_service.initialize_error_log("error_log.txt")
 
-    # Ensure the watch directory exists
-    watch_path = Path(WATCH_DIRECTORY)
+    # KORJAUS: Ohitetaan WATCH_DIRECTORY ja käytetään suoraan pomminvarmaa config-polkua
+    watch_path = WATCH_PATH
     watch_path.mkdir(exist_ok=True)
     
     print(f"[START] Directory watcher active on: '{watch_path.resolve()}'")
@@ -143,6 +143,9 @@ def main():
             video_files = list(watch_path.glob("*.mp4")) + list(watch_path.glob("*.MP4"))
             
             if video_files:
+                # DEBUG PRINT: Tulostetaan heti löydettyjen tiedostojen määrä
+                print(f"[DEBUG] Found {len(video_files)} video file(s) in queue. Starting processing loop...")
+                
                 # Sort files by modification time (oldest first for power outage recovery)
                 video_files.sort(key=lambda x: x.stat().st_mtime)
                 
