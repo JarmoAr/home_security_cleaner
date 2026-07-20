@@ -9,6 +9,8 @@ import save_service
 import name_service
 import vision_service
 import cleaner_service
+import log_service
+
 # main.py tiedoston yläreunaan:
 from config import WATCH_PATH, TEMP_PATH, ARCHIVE_PATH, DELETE_PATH, AI_RESULTS_PATH, create_directories
 
