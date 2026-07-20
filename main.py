@@ -113,8 +113,8 @@ def main():
     watch_path = WATCH_PATH
     watch_path.mkdir(exist_ok=True)
     
-    print(f"[START] Directory watcher active on: '{watch_path.resolve()}'")
-    print(f"[START] Scanning every {CHECK_INTERVAL_SECONDS} seconds. Press Ctrl+C to stop.")
+    log_service.log_info(f"[START] Directory watcher active on: '{watch_path.resolve()}'")
+    log_service.log_info(f"[START] Scanning every {CHECK_INTERVAL_SECONDS} seconds. Press Ctrl+C to stop.")
 
     # Initialize the date tracking variable for scheduled daily folder cleanups
     last_cleanup_date = None
@@ -144,7 +144,7 @@ def main():
             
             if video_files:
                 # DEBUG PRINT: Tulostetaan heti löydettyjen tiedostojen määrä
-                print(f"[DEBUG] Found {len(video_files)} video file(s) in queue. Starting processing loop...")
+                log_service.log_info(f"[QUEUE] Found {len(video_files)} video file(s) in queue. Starting processing loop...")
                 
                 # Sort files by modification time (oldest first for power outage recovery)
                 video_files.sort(key=lambda x: x.stat().st_mtime)
