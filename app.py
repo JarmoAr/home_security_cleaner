@@ -174,19 +174,28 @@ if view_mode == "Review & Retrain AI":
             st.markdown("### 🔒 Final Action")
             st.write("When you are completely done extracting all objects, click below to move the video out of the archive:")
             
-            # Action 4: Dismiss to Trash (TÄMÄ ON NYT AINOA JOKA SIIRTÄÄ TIEDOSTON POIS)
+            # Action 4: Dismiss to Trash (Purges the entire ai_results directory to save disk space)
             if st.button("🗑️ Done with Video (Move to Trash)", use_container_width=True, type="secondary"):
                 from config import DELETE_PATH
                 trash_target = os.path.join(str(DELETE_PATH), selected_video_name)
                 try:
                     if os.path.exists(full_video_path):
+                        # 1. Move the verified video file from archive to trash quarantine
                         shutil.move(full_video_path, trash_target)
-                        st.warning("Video successfully moved to trash. Refreshing queue...")
+                        
+                        # 2. BULK CLEANUP: Permanently delete every single file inside the ai_results scratchpad
+                        if os.path.exists(ai_results_dir):
+                            for filename in os.listdir(ai_results_dir):
+                                file_to_remove = os.path.join(ai_results_dir, filename)
+                                if os.path.isfile(file_to_remove):
+                                    os.remove(file_to_remove)
+                        
+                        st.warning("Video moved to trash and all visual AI debugger files completely purged. Refreshing queue...")
                         st.rerun()
                     else:
                         st.error("Video file no longer exists in archive.")
                 except Exception as e:
-                    st.error(f"Failed to move file: {e}")
+                    st.error(f"Failed to move file and completely empty AI results: {e}")
 
 # ==============================================================================
 # SECTION 2: VIEW AI MODEL TEMPLATES
