@@ -198,11 +198,11 @@ if view_mode == "Review & Retrain AI":
                     st.error(f"Failed to move file and completely empty AI results: {e}")
 
 # ==============================================================================
-# SECTION 2: VIEW AI MODEL TEMPLATES
+# SECTION 2: VIEW AI MODEL TEMPLATES (WITH COMPACT DELETE SUPPORT)
 # ==============================================================================
 elif view_mode == "View AI Model Templates":
     st.markdown("### 🖼️ Active AI Model Templates")
-    st.write("These are your authorized reference images. The AI uses these files to determine what belongs to your house vs. what is a stranger.")
+    st.write("These are your authorized reference images. The AI uses these files to determine what belongs to your house vs. what is a stranger. Remove bad samples instantly below.")
     
     categories = {
         "🛞 Authorized Vehicles (images/auto)": os.path.join(script_dir, "images", "auto"),
@@ -216,13 +216,27 @@ elif view_mode == "View AI Model Templates":
             template_files = [f for f in os.listdir(cat_path) if f.endswith(('.jpg', '.jpeg', '.png'))]
             
             if template_files:
+                # Display templates in a grid layout (4 columns)
                 cols = st.columns(4)
                 for index, file_name in enumerate(template_files):
                     col_target = cols[index % 4]
                     full_img_path = os.path.join(cat_path, file_name)
+                    
                     with col_target:
                         st.image(full_img_path, caption=file_name, use_container_width=True)
+                        
+                        # Added dynamic template deletion capability directly from UI grid layout
+                        # Unique key is calculated using file name to prevent collision
+                        button_key = f"del_{file_name}_{index}"
+                        if st.button(f"🗑️ Delete Sample", key=button_key, type="secondary", use_container_width=True):
+                            try:
+                                os.remove(full_img_path)
+                                st.toast(f"✅ Successfully deleted template: {file_name}")
+                                st.rerun()  # Instantly wipe from view grid
+                            except Exception as delete_error:
+                                st.error(f"Failed to delete file: {delete_error}")
             else:
                 st.info(f"No reference images found in `{cat_path}` yet. Use the training buttons to add samples!")
         else:
             st.error(f"Template folder missing on server disk: `{cat_path}`")
+
