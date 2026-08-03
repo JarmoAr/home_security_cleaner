@@ -61,15 +61,20 @@ st.sidebar.header("📁 Navigation & Queues")
 view_mode = st.sidebar.radio("Go to section:", ["Review Alerts (Archive)", "Audit Trash (Quarantine)", "View AI Model Templates"])
 
 # ==============================================================================
-# SECTION 1: REVIEW ALERTS (ARCHIVE)
+# SECTION 1: REVIEW ALERTS (ARCHIVE) - CHRONOLOGICAL REVERSE SORT
 # ==============================================================================
 if view_mode == "Review Alerts (Archive)":
-    videos = [f for f in os.listdir(archive_dir) if f.endswith(('.mp4', '.avi', '.mkv'))] if os.path.exists(archive_dir) else []
+    if os.path.exists(archive_dir):
+        # Fetch files and sort them dynamically by modification time (Newest First)
+        raw_videos = [f for f in os.listdir(archive_dir) if f.endswith(('.mp4', '.avi', '.mkv'))]
+        videos = sorted(raw_videos, key=lambda x: os.path.getmtime(os.path.join(archive_dir, x)), reverse=True)
+    else:
+        videos = []
     
     if not videos:
         st.info("🎉 The archive directory is clean! No mystery videos to review right now.")
     else:
-        selected_video_name = st.sidebar.selectbox("Select an archived video:", videos)
+        selected_video_name = st.sidebar.selectbox("Select an archived video (Newest first):", videos)
         full_video_path = os.path.join(archive_dir, selected_video_name)
         
         col1, col2 = st.columns([1.2, 1.0])
@@ -89,7 +94,7 @@ if view_mode == "Review Alerts (Archive)":
                         analyze_results.analyze_video_individually(target_debug_path, ai_results_dir)
                         st.success("Analysis complete! Bounding box images generated below.")
                         
-                        generated_images = [f for f in os.listdir(ai_results_dir) if f.startswith(os.path.splitext(selected_video_name)[0]) and f.endswith(('.jpg', '.jpeg', '.png'))]
+                        generated_images = [f for f in os.listdir(ai_results_dir) if f.startswith(os.path.splitext(selected_video_name)) and f.endswith(('.jpg', '.jpeg', '.png'))]
                         if generated_images:
                             for img_name in sorted(generated_images):
                                 st.image(os.path.join(ai_results_dir, img_name), caption=img_name, use_container_width=True)
@@ -125,18 +130,23 @@ if view_mode == "Review Alerts (Archive)":
                     st.error(f"Failed to move file: {e}")
 
 # ==============================================================================
-# SECTION 2: AUDIT TRASH (QUARANTINE BIN AUDITING) - UUSI OMINAISUUS!
+# SECTION 2: AUDIT TRASH - CHRONOLOGICAL REVERSE SORT
 # ==============================================================================
 elif view_mode == "Audit Trash (Quarantine)":
     st.markdown("### 🗑️ Trash Quarantine Vault (30-day Rolling Buffer)")
     st.write("These videos were classified as safe (e.g., Own Car) and sent to trash. Review them below to ensure no false negatives occurred.")
     
-    trash_videos = [f for f in os.listdir(trash_dir) if f.endswith(('.mp4', '.avi', '.mkv'))] if os.path.exists(trash_dir) else []
+    if os.path.exists(trash_dir):
+        # Fetch files and sort them dynamically by modification time (Newest First)
+        raw_trash = [f for f in os.listdir(trash_dir) if f.endswith(('.mp4', '.avi', '.mkv'))]
+        trash_videos = sorted(raw_trash, key=lambda x: os.path.getmtime(os.path.join(trash_dir, x)), reverse=True)
+    else:
+        trash_videos = []
     
     if not trash_videos:
         st.info("Empty! There are no videos currently waiting inside the trash quarantine buffer.")
     else:
-        selected_trash_name = st.sidebar.selectbox("Select a trashed video:", trash_videos)
+        selected_trash_name = st.sidebar.selectbox("Select a trashed video (Newest first):", trash_videos)
         full_trash_path = os.path.join(trash_dir, selected_trash_name)
         
         col1, col2 = st.columns([1.2, 1.0])
@@ -174,10 +184,3 @@ elif view_mode == "View AI Model Templates":
                 cols = st.columns(4)
                 for index, file_name in enumerate(template_files):
                     col_target = cols[index % 4]
-                    full_img_path = os.path.join(cat_path, file_name)
-                    with col_target:
-                        st.image(full_img_path, caption=file_name, use_container_width=True)
-                        if st.button(f"🗑️ Delete Sample", key=f"del_{file_name}_{index}", use_container_width=True, type="secondary"):
-                            os.remove(full_img_path)
-                            st.toast(f"✅ Deleted template: {file_name}")
-                            st.rerun()
