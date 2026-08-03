@@ -5,58 +5,34 @@ import logging
 from pathlib import Path
 from datetime import datetime
 
-# Imported services (Muutetaan nämäkin englanniksi myöhemmin jos haluat)
+# Imported services 
 import save_service
 import name_service
 import vision_service
 import cleaner_service
 import log_service
 
-# main.py tiedoston yläreunaan:
+# Configuration imports
 from config import WATCH_PATH, TEMP_PATH, ARCHIVE_PATH, DELETE_PATH, AI_RESULTS_PATH, create_directories
 
-# Configuration
+# Core parameters
 WATCH_DIRECTORY = WATCH_PATH  # The directory where the camera drops new files
 CHECK_INTERVAL_SECONDS = 2  # How often to scan the folder
-
-def main():
-    # Ensure all required folders are created at startup
-    create_directories()  
-    
-    # Initialize the automatic daily rolling log (keeps last 7 days)
-    log_service.initialize_logger(days_to_keep=7)
-    log_service.log_info("Application started and directory watcher is spinning up...")
-    
-    # SETUP PATHS
-    temp_path = str(TEMP_PATH)
-    archive_path = str(ARCHIVE_PATH)
-    delete_path = str(DELETE_PATH)
-    ai_results_path = str(AI_RESULTS_PATH) # Uusi muuttuja
-    
-    # AUTOMATIC MAINTENANCE (Runs once at startup)
-    print("[STARTUP] Running automatic storage maintenance...")
-    
-    # 1. Siivotaan normaali roskakori (säilytys 30 päivää)
-    cleaner_service.cleanup_folder(delete_path, days_to_keep=30)
-    
-    # 2. Siivotaan AI-tarkistuskansio (säilytys esim. 7 päivää, jottei täyty turhaan!)
-    cleaner_service.cleanup_folder(ai_results_path, days_to_keep=7)
-    
-    cleaner_service.initialize_error_log("error_log.txt")
 
 def process_video(file_path: Path, temp_path: str, archive_path: str, delete_path: str):
     """
     Processes a single video file detected in the watch directory.
+    Safely handles corrupted frames by routing bad files directly to trash.
     """
     print("\n" + "="*50)
     print(f"[PROCESS] Starting processing for: {file_path.name}")
     print("="*50)
 
+    # Initialize path placeholder so except block can clean it up if AI crashes
+    temp_target_path = None
+
     try:
-        # 1. Get creation timestamp from the file name or system
-        # (Using your name_service to handle the format if needed)
-        # Note: If the filename contains the time, you can extract it here.
-        # For now, we use file modification time as a backup.
+        # 1. Get creation timestamp from file modification time
         file_timestamp = str(int(file_path.stat().st_mtime * 1000))
         formatted_timestamp = name_service.format_timestamp(file_timestamp)
         
@@ -67,7 +43,7 @@ def process_video(file_path: Path, temp_path: str, archive_path: str, delete_pat
         print(f"[INFO] Moving file to temp directory...")
         shutil.move(str(file_path), temp_target_path)
 
-        # 4. AI Vision Processing
+        # 4. AI Vision Processing Baseline
         if os.path.exists(temp_target_path):
             print("[AI] Capturing screenshots for analysis...")
             screenshots = vision_service.capture_screenshots(temp_target_path)
@@ -77,7 +53,6 @@ def process_video(file_path: Path, temp_path: str, archive_path: str, delete_pat
             print(f"[AI] Results: {detections}")
             
             # 5. Route the file based on AI results
-            # Check if any unknown objects were detected
             critical_targets = ["unknown_person", "unknown_car", "unknown_animal"]
             if any(target in detections for target in critical_targets):
                 print("[CRITICAL] Unrecognized object detected! Moving video to ARCHIVE.")
@@ -87,10 +62,21 @@ def process_video(file_path: Path, temp_path: str, archive_path: str, delete_pat
                 shutil.move(temp_target_path, os.path.join(delete_path, os.path.basename(temp_target_path)))
 
     except Exception as e:
-        print(f"[ERROR] Failed to process video {file_path.name}: {e}")
-        # Assuming you want to keep the error log initialization style
+        log_service.log_error(f"Failed to process video {file_path.name}: {e}")
+        
+        # Write to local textual error log file
         with open("error_log.txt", "a") as log_file:
             log_file.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - Error processing {file_path.name}: {e}\n")
+            
+        # CRITICAL RECOVERY: If the AI failed because the video file was corrupted (e.g. array stack crash),
+        # move the bad file out of the temp folder into trash so the pipeline never deadlocks.
+        if temp_target_path and os.path.exists(temp_target_path):
+            try:
+                corrupted_trash_target = os.path.join(delete_path, os.path.basename(temp_target_path))
+                shutil.move(temp_target_path, corrupted_trash_target)
+                log_service.log_info(f"[CLEANER] Successfully purged corrupted/unreadable frame stack video to trash: {file_path.name}")
+            except Exception as backup_error:
+                log_service.log_error(f"Failed to clear corrupted file from temp workspace: {backup_error}")
 
 def main():
     # Ensure all required folders are created at startup
@@ -109,7 +95,7 @@ def main():
     # Automatic error log baseline cleanup
     cleaner_service.initialize_error_log("error_log.txt")
 
-    # KORJAUS: Ohitetaan WATCH_DIRECTORY ja käytetään suoraan pomminvarmaa config-polkua
+    # Force direct path architecture mapping from configuration settings
     watch_path = WATCH_PATH
     watch_path.mkdir(exist_ok=True)
     
@@ -143,7 +129,7 @@ def main():
             video_files = list(watch_path.glob("*.mp4")) + list(watch_path.glob("*.MP4"))
             
             if video_files:
-                # DEBUG PRINT: Tulostetaan heti löydettyjen tiedostojen määrä
+                # Log the dynamic state of the processing queue length
                 log_service.log_info(f"[QUEUE] Found {len(video_files)} video file(s) in queue. Starting processing loop...")
                 
                 # Sort files by modification time (oldest first for power outage recovery)
@@ -158,7 +144,6 @@ def main():
                         
                         # If the file is completely empty (0 bytes), it's corrupted. Move it to trash to unblock the queue.
                         if initial_size == 0:
-                            import shutil
                             trash_target = Path(delete_path) / file_path.name
                             shutil.move(str(file_path), str(trash_target))
                             log_service.log_info(f"[CLEANER] Moved corrupted 0-byte file to trash: {file_path.name}")
