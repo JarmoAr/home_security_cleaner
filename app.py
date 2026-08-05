@@ -167,20 +167,38 @@ elif view_mode == "Audit Trash (Quarantine)":
                     st.error(f"Failed to restore file from quarantine: {restore_err}")
 
 # ==============================================================================
-# SECTION 3: VIEW AI MODEL TEMPLATES
+# SECTION 3: VIEW AI MODEL TEMPLATES (RESTORED TO ORIGINAL WORKING VERSION)
 # ==============================================================================
 elif view_mode == "View AI Model Templates":
     st.markdown("### 🖼️ Active AI Model Templates")
+    st.write("These are your authorized reference images. The AI uses these files to determine what belongs to your house vs. what is a stranger.")
+    
+    # KORJAUS: Palautettu alkuperäiset toimivat polut suoraan koodikansioon
     categories = {
-        "🛞 Authorized Vehicles (images/auto)": os.path.join(script_dir, "images", "auto"),
-        "👤 Known Residents (images/ihmiset)": os.path.join(script_dir, "images", "ihmiset"),
-        "🐾 Family Pets / Dog (images/koira)": os.path.join(script_dir, "images", "koira")
+        "🛞 Authorized Vehicles (images/auto)": "images/auto",
+        "👤 Known Residents (images/ihmiset)": "images/ihmiset",
+        "🐾 Family Pets / Dog (images/koira)": "images/koira"
     }
+    
     for cat_title, cat_path in categories.items():
         st.markdown(f"#### {cat_title}")
         if os.path.exists(cat_path):
             template_files = [f for f in os.listdir(cat_path) if f.endswith(('.jpg', '.jpeg', '.png'))]
+            
             if template_files:
                 cols = st.columns(4)
                 for index, file_name in enumerate(template_files):
                     col_target = cols[index % 4]
+                    full_img_path = os.path.join(cat_path, file_name)
+                    with col_target:
+                        st.image(full_img_path, caption=file_name, use_container_width=True)
+                        # Keep the handy delete button but use the original path format
+                        if st.button(f"🗑️ Delete Sample", key=f"del_{file_name}_{index}", use_container_width=True, type="secondary"):
+                            os.remove(full_img_path)
+                            st.toast(f"✅ Deleted template: {file_name}")
+                            st.rerun()
+            else:
+                st.info(f"No reference images found in `{cat_path}` yet. Use the training buttons to add samples!")
+        else:
+            st.error(f"Template folder missing on server disk: `{cat_path}`")
+
