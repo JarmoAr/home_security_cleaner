@@ -205,13 +205,27 @@ elif view_mode == "View AI Model Templates":
                 for index, file_name in enumerate(template_files):
                     col_target = cols[index % 4]
                     full_img_path = os.path.join(cat_path, file_name)
+# app.py tiedoston loppupuolella, etsi kohta: with col_target:
                     with col_target:
-                        st.image(full_img_path, caption=file_name, use_container_width=True)
-                        # Keep the handy delete button but use the original path format
+                        try:
+                            # KORJAUS: Luetaan kuva OpenCV:n kautta taustalla!
+                            # Tämä ohittaa Ultralyticsin bugin ja pi_heif-vaatimuksen kokonaan.
+                            image_bytes = cv2.imread(full_img_path)
+                            if image_bytes is not None:
+                                # Muutetaan OpenCV:n BGR-värit Streamlitin vaatimaan RGB-muotoon
+                                rgb_image = cv2.cvtColor(image_bytes, cv2.COLOR_BGR2RGB)
+                                st.image(rgb_image, caption=file_name, use_container_width=True)
+                            else:
+                                st.error(f"Unreadable: {file_name}")
+                        except Exception as img_err:
+                            st.error(f"Image load failed: {img_err}")
+                        
+                        # Keep the handy delete button unchanged
                         if st.button(f"🗑️ Delete Sample", key=f"del_{file_name}_{index}", use_container_width=True, type="secondary"):
                             os.remove(full_img_path)
                             st.toast(f"✅ Deleted template: {file_name}")
                             st.rerun()
+
             else:
                 st.info(f"No reference images found in `{cat_path}` yet. Use the training buttons to add samples!")
         else:
