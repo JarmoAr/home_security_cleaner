@@ -102,11 +102,10 @@ if view_mode == "Review Alerts (Archive)":
                             st.warning("YOLOv8 did not find any distinct targets to draw on this video.")
                     except Exception as e:
                         st.error(f"Error during debugger run: {e}")
-            
         with col2:
             st.markdown("### 🧠 AI Retraining Actions")
             
-            # 1. Train Vehicle (Fixed standard if-else block to prevent Streamlit Magic dumps)
+            # 1. Train Vehicle (Standard if-else block)
             if st.button("🛞 Extract as 'Own Vehicle' (car)", use_container_width=True):
                 success = sample_service.extract_new_sample(full_video_path, "car", "images/auto", "own_car")
                 if success:
@@ -114,7 +113,7 @@ if view_mode == "Review Alerts (Archive)":
                 else:
                     st.error("No clear vehicle found.")
                         
-            # 2. Train Known Person (Fixed standard if-else block to prevent Streamlit Magic dumps)
+            # 2. Train Known Person (Standard if-else block)
             if st.button("👤 Extract as 'Known Person' (person)", use_container_width=True):
                 success = sample_service.extract_new_sample(full_video_path, "person", "images/ihmiset", "known_person")
                 if success:
@@ -122,13 +121,27 @@ if view_mode == "Review Alerts (Archive)":
                 else:
                     st.error("No clear face found.")
                         
-            # 3. Train Dog (Fixed standard if-else block to prevent Streamlit Magic dumps)
+            # 3. Train Dog (Standard if-else block)
             if st.button("🐾 Extract as 'Own Dog' (dog)", use_container_width=True):
                 success = sample_service.extract_new_sample(full_video_path, "dog", "images/koira", "own_dog")
                 if success:
                     st.success("✅ Dog template extracted!")
                 else:
                     st.error("No clear dog found.")
+
+            # RESTORED ACTION: Final Action to dismiss the video and clear all visual debuggers
+            st.markdown("### 🔒 Final Action")
+            if st.button("🗑️ Done with Video (Move to Trash)", use_container_width=True, type="secondary"):
+                try:
+                    shutil.move(full_video_path, os.path.join(trash_dir, selected_video_name))
+                    if os.path.exists(ai_results_dir):
+                        for f in os.listdir(ai_results_dir):
+                            if os.path.isfile(os.path.join(ai_results_dir, f)):
+                                os.remove(os.path.join(ai_results_dir, f))
+                    st.warning("Video moved to trash and debugger cache completely wiped!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Failed to move file: {e}")
 
 
 # ==============================================================================
