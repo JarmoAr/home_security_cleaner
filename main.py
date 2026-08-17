@@ -115,14 +115,15 @@ def main():
             if last_cleanup_date != current_date:
                 log_service.log_info("[MAINTENANCE] Running scheduled daily storage cleanup...")
                 
-                # Clean the local trash folder (30 days retention policy)
-                cleaner_service.cleanup_folder(delete_path, days_to_keep=30)
+                # OPTIMIZATION: Reduced retention from 30 days to 7 days to guarantee the 110 GB disk limit never overflows
+                cleaner_service.cleanup_folder(delete_path, days_to_keep=7)
                 
                 # Clean the AI results visual debugging folder (7 days retention policy)
                 cleaner_service.cleanup_folder(ai_results_path, days_to_keep=7)
                 
-                # Lock the current date to prevent re-running until the next midnight
+                # Lock the current date to prevent re-running until the next midnight rollover
                 last_cleanup_date = current_date
+
             
             # --- CONTINUOUS DIRECTORY WATCHER ---
             # Fetch a fresh list of all .mp4 and .MP4 files
