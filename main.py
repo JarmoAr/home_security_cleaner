@@ -82,8 +82,8 @@ def main():
     # Ensure all required folders are created at startup
     create_directories() 
     
-    # Initialize the daily rolling logging service (keeps last 7 days of logs)
-    log_service.initialize_logger(days_to_keep=7)
+    # Initialize the daily rolling logging service (keeps last 14 days of logs)
+    log_service.initialize_logger(days_to_keep=14)
     log_service.log_info("Application started and directory watcher is spinning up...")
     
     # Setup paths from config variables
@@ -115,11 +115,11 @@ def main():
             if last_cleanup_date != current_date:
                 log_service.log_info("[MAINTENANCE] Running scheduled daily storage cleanup...")
                 
-                # OPTIMIZATION: Reduced retention from 30 days to 7 days to guarantee the 110 GB disk limit never overflows
-                cleaner_service.cleanup_folder(delete_path, days_to_keep=7)
+                # OPTIMIZATION: Change from 7 days to 14 days (original 30 days) to guarantee the new 800 GB disk limit never overflows
+                cleaner_service.cleanup_folder(delete_path, days_to_keep=14)
                 
-                # Clean the AI results visual debugging folder (7 days retention policy)
-                cleaner_service.cleanup_folder(ai_results_path, days_to_keep=7)
+                # Clean the AI results visual debugging folder (14 days retention policy)
+                cleaner_service.cleanup_folder(ai_results_path, days_to_keep=14)
                 
                 # Lock the current date to prevent re-running until the next midnight rollover
                 last_cleanup_date = current_date
