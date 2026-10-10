@@ -2,6 +2,7 @@ import os
 import time
 import shutil
 import logging
+import uuid
 from pathlib import Path
 from datetime import datetime
 
@@ -68,15 +69,23 @@ def process_video(file_path: Path, temp_path: str, archive_path: str, delete_pat
         with open("error_log.txt", "a") as log_file:
             log_file.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - Error processing {file_path.name}: {e}\n")
             
-        # CRITICAL RECOVERY: If the AI failed because the video file was corrupted (e.g. array stack crash),
-        # move the bad file out of the temp folder into trash so the pipeline never deadlocks.
+        # Decoder failures go to trash; other failures remain reviewable.
         if temp_target_path and os.path.exists(temp_target_path):
             try:
-                corrupted_trash_target = os.path.join(delete_path, os.path.basename(temp_target_path))
-                shutil.move(temp_target_path, corrupted_trash_target)
-                log_service.log_info(f"[CLEANER] Successfully purged corrupted/unreadable frame stack video to trash: {file_path.name}")
+                if isinstance(e, vision_service.CorruptVideoError):
+                    error_dir = Path(delete_path)
+                else:
+                    error_dir = Path(archive_path) / "processing_errors"
+                error_dir.mkdir(parents=True, exist_ok=True)
+                target = error_dir / Path(temp_target_path).name
+                if target.exists():
+                    target = error_dir / f"{target.stem}_{uuid.uuid4().hex}{target.suffix}"
+                shutil.move(temp_target_path, str(target))
+                print(f"[ERROR] {type(e).__name__}: video moved to {target}", flush=True)
+                log_service.log_info(f"Failed video routed to: {target}")
             except Exception as backup_error:
-                log_service.log_error(f"Failed to clear corrupted file from temp workspace: {backup_error}")
+                log_service.log_error(f"Failed to preserve video from temp: {backup_error}")
+
 
 def main():
     # Ensure all required folders are created at startup

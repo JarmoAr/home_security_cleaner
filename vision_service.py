@@ -1,80 +1,96 @@
 import os
+import math
+from types import SimpleNamespace
 import cv2
 import face_recognition
 from ultralytics import YOLO
 import log_service
 
+class CorruptVideoError(ValueError):
+    """The video cannot provide valid sampled frames."""
+
+
 def capture_screenshots(video_path):
-    """
-    Captures video frames every 2 seconds and returns them in a list.
-    """
+    """Capture frames every two seconds; propagate non-decoding errors."""
+    # Missing/inaccessible files are filesystem errors, not corrupt videos.
+    with open(video_path, "rb"):
+        pass
+    cap = cv2.VideoCapture(video_path)
     try:
-        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            raise CorruptVideoError(f"Decoder cannot open video: {video_path}")
         fps = cap.get(cv2.CAP_PROP_FPS)
-        if fps > 0:
-            video_length = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps 
-        else:
-            video_length = 0
-        
+        total = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+        if not math.isfinite(fps) or fps <= 0 or not math.isfinite(total) or total <= 0:
+            raise CorruptVideoError(f"Invalid video metadata: {video_path}")
         screenshots = []
         second = 0
-        while second < video_length:
-            cap.set(cv2.CAP_PROP_POS_MSEC, second * 1000)
+        while second < total / fps:
+            if not cap.set(cv2.CAP_PROP_POS_MSEC, second * 1000):
+                raise RuntimeError(f"Decoder cannot seek to {second}s")
             success, frame = cap.read()
-            if success:
-                screenshots.append(frame)
+            if not success or frame is None:
+                raise CorruptVideoError(f"Unreadable video frame at {second}s")
+            screenshots.append(frame)
             second += 2
-        cap.release()
         return screenshots
-    except Exception as e:
-        log_service.log_error(f"Error capturing screenshots: {e}")
-        return []        
+    finally:
+        cap.release()
+
+
+def load_known_faces():
+    encodings = []
+    folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "images", "ihmiset")
+    if os.path.isdir(folder):
+        for filename in sorted(os.listdir(folder)):
+            if filename.lower().endswith((".jpg", ".jpeg", ".png")):
+                image = face_recognition.load_image_file(os.path.join(folder, filename))
+                faces = face_recognition.face_encodings(image)
+                if faces:
+                    encodings.append(faces[0])
+    return encodings
+
 
 def detect_objects(screenshots):
-    """
-    Analyzes screenshots using YOLOv8 and categorizes detected objects.
-    """
+    """Analyze each object locally, without rescanning the entire video."""
     try:
+        if not screenshots:
+            raise RuntimeError("No frames supplied to object detection")
         model = YOLO("yolov8n.pt")
-        detected_labels = [] 
-
-        results = model.predict(source=screenshots, verbose=False, conf=0.60)
-
-        for i, result in enumerate(results):
+        labels = set()
+        known_encodings = None
+        for i, frame in enumerate(screenshots, 1):
+            print(f"[AI] Frame {i}/{len(screenshots)}: detecting objects", flush=True)
+            result = model.predict(source=frame, verbose=False, conf=0.60)[0]
             for box in result.boxes:
-                class_id = int(box.cls) if hasattr(box.cls, '__getitem__') else int(box.cls.item() if hasattr(box.cls, 'item') else box.cls)
-                name = model.names[class_id]
-                
-                final_label = None
+                name = model.names[int(box.cls.item())]
+                single_result = SimpleNamespace(boxes=[box])
+                label = None
+                if name == "dog":
+                    own = is_own_dog([frame], [single_result])
+                    label = "own_dog" if own else "unknown_animal"
+                elif name in ("cat", "bird", "horse", "sheep"):
+                    label = "unknown_animal"
+                elif name in ("car", "truck"):
+                    own = is_own_car([frame], [single_result])
+                    label = "own_car" if own else "unknown_car"
+                elif name == "person":
+                    if known_encodings is None:
+                        known_encodings = load_known_faces()
+                    x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+                    height, width = frame.shape[:2]
+                    crop = frame[max(0, y1):min(height, y2), max(0, x1):min(width, x2)]
+                    print(f"[AI] Frame {i}: checking person crop", flush=True)
+                    known = crop.size > 0 and is_known_person([crop], known_encodings)
+                    label = "known_person" if known else "unknown_person"
+                if label:
+                    labels.add(label)
+            print(f"[AI] Frame {i} complete: {sorted(labels)}", flush=True)
+        return sorted(labels)
+    except Exception as error:
+        log_service.log_error(f"Error detecting objects: {error}")
+        raise
 
-                if name == 'dog':
-                    if is_own_dog(screenshots, results):
-                        final_label = "own_dog"
-                    else:
-                        final_label = "unknown_animal"
-                
-                elif name in ['cat', 'bird', 'horse', 'sheep']:
-                    final_label = "unknown_animal"
-
-                elif name == 'person':
-                    if is_known_person(screenshots):
-                        final_label = "known_person"
-                    else:
-                        final_label = "unknown_person"
-
-                elif name in ['car', 'truck']:
-                    if is_own_car(screenshots, results):
-                        final_label = "own_car"
-                    else:
-                        final_label = "unknown_car"
-
-                if final_label and final_label not in detected_labels:
-                    detected_labels.append(final_label)
-        
-        return detected_labels
-    except Exception as e:
-        log_service.log_error(f"Error detecting objects: {e}")
-        return []
 
 def is_own_dog(screenshots, yolo_results):
     """
@@ -136,7 +152,7 @@ def is_own_dog(screenshots, yolo_results):
         return False
     except Exception as e:
         log_service.log_error(f"Error checking own dog: {e}")
-        return None
+        raise
 
 def is_own_car(screenshots, yolo_results):
     """
@@ -216,34 +232,27 @@ def is_own_car(screenshots, yolo_results):
         return False
     except Exception as e:
         log_service.log_error(f"Error checking own car: {e}")
-        return None
+        raise
 
-def is_known_person(screenshots):
-    """
-    Uses face_recognition to verify if a person matches known face images.
-    """
+def is_known_person(screenshots, known_encodings=None):
+    """Check cropped people using RGB frames and reusable face templates."""
     try:
-        folder_path = "images/ihmiset"
-        template_images = []
-        if os.path.exists(folder_path):
-            for file in os.listdir(folder_path):
-                if file.endswith((".jpg", ".JPEG", ".png")):
-                    template_images.append(os.path.join(folder_path, file))
-
-        known_encodings = []
-        for template in template_images:
-            img = face_recognition.load_image_file(template)
-            img_encodings = face_recognition.face_encodings(img)
-            if len(img_encodings) > 0:
-                known_encodings.append(img_encodings[0])
-
+        if known_encodings is None:
+            known_encodings = load_known_faces()
+        if not known_encodings:
+            return False
         for frame in screenshots:
-            frame_encodings = face_recognition.face_encodings(frame)
-            for encoding in frame_encodings:
-                matches = face_recognition.compare_faces(known_encodings, encoding)
-                if True in matches:
-                    return True
+            height, width = frame.shape[:2]
+            if not height or not width:
+                continue
+            scale = min(1.0, 640 / max(height, width))
+            small = cv2.resize(frame, (max(1, round(width * scale)), max(1, round(height * scale))))
+            rgb = cv2.cvtColor(small, cv2.COLOR_BGR2RGB)
+            faces = face_recognition.face_encodings(rgb)
+            # A known face must not hide an unknown face inside the same crop.
+            if faces and all(any(face_recognition.compare_faces(known_encodings, face)) for face in faces):
+                return True
         return False
-    except Exception as e:
-        log_service.log_error(f"Error recognizing person: {e}")
-        return None
+    except Exception as error:
+        log_service.log_error(f"Error recognizing person: {error}")
+        raise
